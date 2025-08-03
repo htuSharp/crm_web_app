@@ -95,31 +95,31 @@ class _DataManagementPageState extends State<DataManagementPage>
     return Expanded(
       child: Column(
         children: [
-          Card(
-            margin: const EdgeInsets.all(8),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.medical_services, color: Colors.blue),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Medical Specialties Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () => _specialtyService.showAddSpecialtyDialog(
-                      context,
-                      _refreshCurrentSection,
-                    ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Specialty'),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // Card(
+          //   margin: const EdgeInsets.all(8),
+          //   child: Padding(
+          //     padding: const EdgeInsets.all(16),
+          //     child: Row(
+          //       children: [
+          //         const Icon(Icons.medical_services, color: Colors.blue),
+          //         const SizedBox(width: 12),
+          //         const Text(
+          //           'Medical Specialties Management',
+          //           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          //         ),
+          //         const Spacer(),
+          //         ElevatedButton.icon(
+          //           onPressed: () => _specialtyService.showAddSpecialtyDialog(
+          //             context,
+          //             _refreshCurrentSection,
+          //           ),
+          //           icon: const Icon(Icons.add),
+          //           label: const Text('Add Specialty'),
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
           Card(
             margin: const EdgeInsets.all(8),
             child: Padding(
