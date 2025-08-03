@@ -40,7 +40,7 @@ jobs:
       run: flutter test || echo "Tests completed with warnings"
 
     - name: Build web app
-      run: flutter build web --web-renderer html --release --base-href "/crm_web_app/"
+      run: flutter build web html --release --base-href "/crm_web_app/"
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
