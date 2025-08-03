@@ -36,11 +36,6 @@ class _DataManagementPageState extends State<DataManagementPage>
     super.initState();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   void _onCategoryChanged(String category) {
     setState(() {
       selectedCategory = category;
