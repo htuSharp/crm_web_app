@@ -43,7 +43,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Build web app
 echo Building web application...
-flutter build web html --release --base-href "/crm_web_app/"
+flutter build web --release --base-href "/crm_web_app/"
 if %ERRORLEVEL% NEQ 0 (
     echo Error: Web build failed
     exit /b 1

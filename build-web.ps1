@@ -68,7 +68,7 @@ try {
 # Build web app
 Write-Host "Building web application..." -ForegroundColor Yellow
 try {
-    flutter build web html --release --base-href "/crm_web_app/"
+    flutter build web --release --base-href "/crm_web_app/"
     Write-Host "Web build completed successfully!" -ForegroundColor Green
 } catch {
     Write-Host "Error: Web build failed" -ForegroundColor Red
@@ -76,7 +76,7 @@ try {
     # Try fallback build without base-href
     Write-Host "Attempting fallback build..." -ForegroundColor Yellow
     try {
-        flutter build web html --release
+        flutter build web --release
         Write-Host "Fallback build succeeded!" -ForegroundColor Green
         Write-Host "Note: Built without base-href. May need manual adjustment for GitHub Pages." -ForegroundColor Yellow
     } catch {

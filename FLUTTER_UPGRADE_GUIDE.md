@@ -73,7 +73,7 @@
 
 2. **Web Renderer Issues**:
    ```bash
-   flutter build web html --dart-define=FLUTTER_WEB_USE_SKIA=false
+   flutter build web --dart-define=FLUTTER_WEB_USE_SKIA=false
    ```
 
 3. **GitHub Pages Base Href**:
@@ -101,7 +101,7 @@
    flutter pub get
    flutter analyze
    flutter test
-   flutter build web html --release --base-href "/crm_web_app/"
+   flutter build web --release --base-href "/crm_web_app/"
    ```
 
 3. **Local Serving:**
@@ -179,7 +179,7 @@ flutter pub upgrade --major-versions
 #### **Issue 3: Web Build Failures**
 **Solution**: 
 ```bash
-flutter build web html --release
+flutter build web --release
 # Remove base-href if needed, adjust manually
 ```
 
