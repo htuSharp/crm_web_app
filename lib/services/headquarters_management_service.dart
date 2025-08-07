@@ -1,9 +1,60 @@
 import 'package:flutter/material.dart';
+import '../repositories/headquarters_repository.dart';
 
 class HeadquartersManagementService {
-  final List<String> _headquartersList = [];
+  final List<Map<String, dynamic>> _headquartersList = [];
+  final HeadquartersRepository _headquartersRepository =
+      HeadquartersRepository();
+  bool _isLoading = false;
+  String? _error;
 
-  List<String> get headquartersList => List.unmodifiable(_headquartersList);
+  List<Map<String, dynamic>> get headquartersList =>
+      List.unmodifiable(_headquartersList);
+  List<String> get headquartersNames =>
+      _headquartersList.map((h) => h['name'] as String).toList();
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  // Load headquarters from Supabase
+  Future<void> loadHeadquarters() async {
+    _isLoading = true;
+    _error = null;
+    try {
+      final headquarters = await _headquartersRepository
+          .getAllHeadquartersWithData();
+      _headquartersList.clear();
+      _headquartersList.addAll(headquarters);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  // Search headquarters in Supabase
+  Future<void> searchHeadquarters(String query) async {
+    if (query.isEmpty) {
+      await loadHeadquarters();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    try {
+      final headquarters = await _headquartersRepository.searchHeadquarters(
+        query,
+      );
+      _headquartersList.clear();
+      // Convert string results to map format for consistency
+      _headquartersList.addAll(
+        headquarters.map((name) => {'name': name}).toList(),
+      );
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
 
   // Common headquarters/regions
   static const List<String> commonHeadquarters = [
@@ -46,47 +97,95 @@ class HeadquartersManagementService {
   }
 
   // Business logic methods
-  bool isDuplicateHeadquarters(String headquarters, {String? excluding}) {
-    return _headquartersList.any(
-      (item) =>
-          item.toLowerCase() == headquarters.toLowerCase() && item != excluding,
-    );
+  Future<bool> isDuplicateHeadquarters(
+    String headquarters, {
+    String? excluding,
+  }) async {
+    try {
+      final headquartersList = await _headquartersRepository
+          .getAllHeadquarters();
+      return headquartersList.any(
+        (item) =>
+            item.toLowerCase() == headquarters.toLowerCase() &&
+            item != excluding,
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
-  String addHeadquarters(String headquarters) {
-    final error = validateHeadquarters(headquarters);
-    if (error != null) return error;
+  Future<String> addHeadquarters(String headquarters) async {
+    try {
+      final error = validateHeadquarters(headquarters);
+      if (error != null) return error;
 
-    final trimmedHeadquarters = headquarters.trim();
-    if (isDuplicateHeadquarters(trimmedHeadquarters)) {
-      return 'Headquarters "$trimmedHeadquarters" already exists';
+      final trimmedHeadquarters = headquarters.trim();
+      if (await isDuplicateHeadquarters(trimmedHeadquarters)) {
+        return 'Headquarters "$trimmedHeadquarters" already exists';
+      }
+
+      await _headquartersRepository.createHeadquarters(trimmedHeadquarters);
+      await loadHeadquarters(); // Refresh the list
+      return 'success';
+    } catch (e) {
+      return 'Error adding headquarters: ${e.toString()}';
     }
-
-    _headquartersList.add(trimmedHeadquarters);
-    return 'success';
   }
 
-  String editHeadquarters(String oldHeadquarters, String newHeadquarters) {
-    final error = validateHeadquarters(newHeadquarters);
-    if (error != null) return error;
+  Future<String> editHeadquarters(
+    String oldHeadquarters,
+    String newHeadquarters,
+  ) async {
+    try {
+      final error = validateHeadquarters(newHeadquarters);
+      if (error != null) return error;
 
-    final trimmedHeadquarters = newHeadquarters.trim();
-    if (isDuplicateHeadquarters(
-      trimmedHeadquarters,
-      excluding: oldHeadquarters,
-    )) {
-      return 'Headquarters "$trimmedHeadquarters" already exists';
-    }
+      final trimmedHeadquarters = newHeadquarters.trim();
+      if (await isDuplicateHeadquarters(
+        trimmedHeadquarters,
+        excluding: oldHeadquarters,
+      )) {
+        return 'Headquarters "$trimmedHeadquarters" already exists';
+      }
 
-    final index = _headquartersList.indexOf(oldHeadquarters);
-    if (index != -1) {
-      _headquartersList[index] = trimmedHeadquarters;
+      // Find the headquarters ID
+      final headquarters = _headquartersList.firstWhere(
+        (h) => h['name'] == oldHeadquarters,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (headquarters.isEmpty) {
+        return 'Headquarters not found';
+      }
+
+      await _headquartersRepository.updateHeadquarters(
+        headquarters['id'],
+        trimmedHeadquarters,
+      );
+      await loadHeadquarters(); // Refresh the list
+      return 'success';
+    } catch (e) {
+      return 'Error editing headquarters: ${e.toString()}';
     }
-    return 'success';
   }
 
-  void deleteHeadquarters(String headquarters) {
-    _headquartersList.remove(headquarters);
+  Future<void> deleteHeadquarters(String headquarters) async {
+    try {
+      // Find the headquarters ID
+      final headquartersData = _headquartersList.firstWhere(
+        (h) => h['name'] == headquarters,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (headquartersData.isEmpty) {
+        throw Exception('Headquarters not found');
+      }
+
+      await _headquartersRepository.deleteHeadquarters(headquartersData['id']);
+      await loadHeadquarters(); // Refresh the list
+    } catch (e) {
+      throw Exception('Error deleting headquarters: ${e.toString()}');
+    }
   }
 
   // Dialog helper methods
@@ -161,12 +260,12 @@ class HeadquartersManagementService {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               String result;
               if (editHeadquarters == null) {
-                result = addHeadquarters(controller.text);
+                result = await addHeadquarters(controller.text);
               } else {
-                result = this.editHeadquarters(
+                result = await this.editHeadquarters(
                   editHeadquarters,
                   controller.text,
                 );

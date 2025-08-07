@@ -3,14 +3,55 @@ import 'package:flutter/services.dart';
 import '../models/doctor_entry.dart';
 import '../constants/data_management_constants.dart';
 import '../services/area_management_service.dart';
+import '../repositories/doctor_repository.dart';
 
 class DoctorManagementService {
   final List<DoctorEntry> _doctorsList = [];
+  final DoctorRepository _doctorRepository = DoctorRepository();
+  bool _isLoading = false;
+  String? _error;
 
   List<DoctorEntry> get doctorsList => List.unmodifiable(_doctorsList);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
   // Dependencies for dropdowns
   final AreaManagementService _areaService = AreaManagementService();
+
+  // Load doctors from Supabase
+  Future<void> loadDoctors() async {
+    _isLoading = true;
+    _error = null;
+    try {
+      final doctors = await _doctorRepository.getAllDoctors();
+      _doctorsList.clear();
+      _doctorsList.addAll(doctors);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  // Search doctors in Supabase
+  Future<void> searchDoctors(String query) async {
+    if (query.isEmpty) {
+      await loadDoctors();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    try {
+      final doctors = await _doctorRepository.searchDoctors(query);
+      _doctorsList.clear();
+      _doctorsList.addAll(doctors);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
 
   // Available call days
   static const List<String> availableCallDays = [
@@ -72,15 +113,25 @@ class DoctorManagementService {
     return null; // Allow null dates
   }
 
-  // Business logic methods
-  bool isDuplicateDoctor(String name, {DoctorEntry? excluding}) {
-    return _doctorsList.any(
-      (entry) =>
-          entry.name.toLowerCase() == name.toLowerCase() && entry != excluding,
-    );
+  // Business logic methods - Updated for Supabase
+  Future<bool> isDuplicateDoctor(String name, {DoctorEntry? excluding}) async {
+    try {
+      final excludeId = excluding?.id;
+      return await _doctorRepository.isDoctorNameExists(
+        name,
+        excludeId: excludeId,
+      );
+    } catch (e) {
+      // Fallback to local check if Supabase fails
+      return _doctorsList.any(
+        (entry) =>
+            entry.name.toLowerCase() == name.toLowerCase() &&
+            entry != excluding,
+      );
+    }
   }
 
-  String addDoctor({
+  Future<String> addDoctor({
     required String name,
     required String specialty,
     required String area,
@@ -88,7 +139,7 @@ class DoctorManagementService {
     required String phoneNo,
     DateTime? marriageAnniversary,
     required List<String> callDays,
-  }) {
+  }) async {
     // Validate all fields
     final nameError = validateName(name);
     if (nameError != null) return nameError;
@@ -106,59 +157,12 @@ class DoctorManagementService {
     if (callDaysError != null) return callDaysError;
 
     final trimmedName = name.trim();
-    if (isDuplicateDoctor(trimmedName)) {
+    if (await isDuplicateDoctor(trimmedName)) {
       return 'Doctor "$trimmedName" already exists';
     }
 
-    _doctorsList.add(
-      DoctorEntry(
-        name: trimmedName,
-        specialty: specialty,
-        area: area,
-        dateOfBirth: dateOfBirth,
-        phoneNo: phoneNo.trim(),
-        marriageAnniversary: marriageAnniversary,
-        callDays: List<String>.from(callDays),
-      ),
-    );
-
-    return 'success';
-  }
-
-  String editDoctor({
-    required DoctorEntry oldEntry,
-    required String name,
-    required String specialty,
-    required String area,
-    DateTime? dateOfBirth,
-    required String phoneNo,
-    DateTime? marriageAnniversary,
-    required List<String> callDays,
-  }) {
-    // Validate all fields
-    final nameError = validateName(name);
-    if (nameError != null) return nameError;
-
-    final specialtyError = validateSpecialty(specialty);
-    if (specialtyError != null) return specialtyError;
-
-    final areaError = validateArea(area);
-    if (areaError != null) return areaError;
-
-    final phoneError = validatePhoneNo(phoneNo);
-    if (phoneError != null) return phoneError;
-
-    final callDaysError = validateCallDays(callDays);
-    if (callDaysError != null) return callDaysError;
-
-    final trimmedName = name.trim();
-    if (isDuplicateDoctor(trimmedName, excluding: oldEntry)) {
-      return 'Doctor "$trimmedName" already exists';
-    }
-
-    final index = _doctorsList.indexOf(oldEntry);
-    if (index != -1) {
-      _doctorsList[index] = DoctorEntry(
+    try {
+      final newDoctor = DoctorEntry(
         name: trimmedName,
         specialty: specialty,
         area: area,
@@ -167,13 +171,77 @@ class DoctorManagementService {
         marriageAnniversary: marriageAnniversary,
         callDays: List<String>.from(callDays),
       );
-    }
 
-    return 'success';
+      final createdDoctor = await _doctorRepository.createDoctor(newDoctor);
+      _doctorsList.add(createdDoctor);
+      return 'success';
+    } catch (e) {
+      return 'Failed to add doctor: $e';
+    }
   }
 
-  void deleteDoctor(DoctorEntry entry) {
-    _doctorsList.remove(entry);
+  Future<String> editDoctor({
+    required DoctorEntry oldEntry,
+    required String name,
+    required String specialty,
+    required String area,
+    DateTime? dateOfBirth,
+    required String phoneNo,
+    DateTime? marriageAnniversary,
+    required List<String> callDays,
+  }) async {
+    // Validate all fields
+    final nameError = validateName(name);
+    if (nameError != null) return nameError;
+
+    final specialtyError = validateSpecialty(specialty);
+    if (specialtyError != null) return specialtyError;
+
+    final areaError = validateArea(area);
+    if (areaError != null) return areaError;
+
+    final phoneError = validatePhoneNo(phoneNo);
+    if (phoneError != null) return phoneError;
+
+    final callDaysError = validateCallDays(callDays);
+    if (callDaysError != null) return callDaysError;
+
+    final trimmedName = name.trim();
+    if (await isDuplicateDoctor(trimmedName, excluding: oldEntry)) {
+      return 'Doctor "$trimmedName" already exists';
+    }
+
+    try {
+      final updatedDoctor = oldEntry.copyWith(
+        name: trimmedName,
+        specialty: specialty,
+        area: area,
+        dateOfBirth: dateOfBirth,
+        phoneNo: phoneNo.trim(),
+        marriageAnniversary: marriageAnniversary,
+        callDays: List<String>.from(callDays),
+      );
+
+      final savedDoctor = await _doctorRepository.updateDoctor(updatedDoctor);
+
+      final index = _doctorsList.indexOf(oldEntry);
+      if (index != -1) {
+        _doctorsList[index] = savedDoctor;
+      }
+
+      return 'success';
+    } catch (e) {
+      return 'Failed to update doctor: $e';
+    }
+  }
+
+  Future<void> deleteDoctor(DoctorEntry entry) async {
+    try {
+      await _doctorRepository.deleteDoctor(entry.id);
+      _doctorsList.remove(entry);
+    } catch (e) {
+      throw Exception('Failed to delete doctor: $e');
+    }
   }
 
   // Dialog helper methods
@@ -473,50 +541,59 @@ class DoctorManagementService {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (formKey.currentState!.validate() &&
                     selectedCallDays.isNotEmpty) {
                   String result;
-                  if (editEntry == null) {
-                    result = addDoctor(
-                      name: nameController.text,
-                      specialty: selectedSpecialty!,
-                      area: selectedArea!,
-                      dateOfBirth: selectedDateOfBirth,
-                      phoneNo: phoneController.text,
-                      marriageAnniversary: selectedMarriageAnniversary,
-                      callDays: selectedCallDays,
-                    );
-                  } else {
-                    result = editDoctor(
-                      oldEntry: editEntry,
-                      name: nameController.text,
-                      specialty: selectedSpecialty!,
-                      area: selectedArea!,
-                      dateOfBirth: selectedDateOfBirth,
-                      phoneNo: phoneController.text,
-                      marriageAnniversary: selectedMarriageAnniversary,
-                      callDays: selectedCallDays,
-                    );
-                  }
+                  try {
+                    if (editEntry == null) {
+                      result = await addDoctor(
+                        name: nameController.text,
+                        specialty: selectedSpecialty!,
+                        area: selectedArea!,
+                        dateOfBirth: selectedDateOfBirth,
+                        phoneNo: phoneController.text,
+                        marriageAnniversary: selectedMarriageAnniversary,
+                        callDays: selectedCallDays,
+                      );
+                    } else {
+                      result = await editDoctor(
+                        oldEntry: editEntry,
+                        name: nameController.text,
+                        specialty: selectedSpecialty!,
+                        area: selectedArea!,
+                        dateOfBirth: selectedDateOfBirth,
+                        phoneNo: phoneController.text,
+                        marriageAnniversary: selectedMarriageAnniversary,
+                        callDays: selectedCallDays,
+                      );
+                    }
 
-                  if (result == 'success') {
-                    Navigator.pop(context);
-                    onSuccess();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          editEntry == null
-                              ? 'Doctor added successfully!'
-                              : 'Doctor updated successfully!',
+                    if (result == 'success') {
+                      Navigator.pop(context);
+                      onSuccess();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            editEntry == null
+                                ? 'Doctor added successfully!'
+                                : 'Doctor updated successfully!',
+                          ),
+                          backgroundColor: Colors.green,
                         ),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  } else {
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(result),
+                        content: Text('Error: $e'),
                         backgroundColor: Colors.red,
                       ),
                     );

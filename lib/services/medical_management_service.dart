@@ -4,17 +4,58 @@ import '../models/medical_entry.dart';
 import '../services/headquarters_management_service.dart';
 import '../services/area_management_service.dart';
 import '../services/doctor_management_service.dart';
+import '../repositories/medical_repository.dart';
 
 class MedicalManagementService {
   final List<MedicalEntry> _medicalsList = [];
+  final MedicalRepository _medicalRepository = MedicalRepository();
+  bool _isLoading = false;
+  String? _error;
 
   List<MedicalEntry> get medicalsList => List.unmodifiable(_medicalsList);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
   // Dependencies for dropdowns
   final HeadquartersManagementService _headquartersService =
       HeadquartersManagementService();
   final AreaManagementService _areaService = AreaManagementService();
   final DoctorManagementService _doctorService = DoctorManagementService();
+
+  // Load medicals from Supabase
+  Future<void> loadMedicals() async {
+    _isLoading = true;
+    _error = null;
+    try {
+      final medicals = await _medicalRepository.getAllMedicals();
+      _medicalsList.clear();
+      _medicalsList.addAll(medicals);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  // Search medicals in Supabase
+  Future<void> searchMedicals(String query) async {
+    if (query.isEmpty) {
+      await loadMedicals();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    try {
+      final medicals = await _medicalRepository.searchMedicals(query);
+      _medicalsList.clear();
+      _medicalsList.addAll(medicals);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
 
   // Validation methods
   String? validateName(String name) {
@@ -80,14 +121,23 @@ class MedicalManagementService {
   }
 
   // Business logic methods
-  bool isDuplicateMedical(String name, {MedicalEntry? excluding}) {
-    return _medicalsList.any(
-      (entry) =>
-          entry.name.toLowerCase() == name.toLowerCase() && entry != excluding,
-    );
+  Future<bool> isDuplicateMedical(
+    String name, {
+    MedicalEntry? excluding,
+  }) async {
+    try {
+      final medicals = await _medicalRepository.searchMedicals(name);
+      return medicals.any(
+        (entry) =>
+            entry.name.toLowerCase() == name.toLowerCase() &&
+            entry != excluding,
+      );
+    } catch (e) {
+      return false; // If error, allow operation to proceed
+    }
   }
 
-  String addMedical({
+  Future<String> addMedical({
     required String name,
     required String headquarter,
     required String area,
@@ -95,7 +145,7 @@ class MedicalManagementService {
     required String phoneNo,
     required String address,
     required String attachedDoctor,
-  }) {
+  }) async {
     // Validate all fields
     final nameError = validateName(name);
     if (nameError != null) return nameError;
@@ -119,65 +169,12 @@ class MedicalManagementService {
     if (doctorError != null) return doctorError;
 
     final trimmedName = name.trim();
-    if (isDuplicateMedical(trimmedName)) {
+    if (await isDuplicateMedical(trimmedName)) {
       return 'Medical facility "$trimmedName" already exists';
     }
 
-    _medicalsList.add(
-      MedicalEntry(
-        name: trimmedName,
-        headquarter: headquarter,
-        area: area,
-        contactPerson: contactPerson.trim(),
-        phoneNo: phoneNo.trim(),
-        address: address.trim(),
-        attachedDoctor: attachedDoctor,
-      ),
-    );
-
-    return 'success';
-  }
-
-  String editMedical({
-    required MedicalEntry oldEntry,
-    required String name,
-    required String headquarter,
-    required String area,
-    required String contactPerson,
-    required String phoneNo,
-    required String address,
-    required String attachedDoctor,
-  }) {
-    // Validate all fields
-    final nameError = validateName(name);
-    if (nameError != null) return nameError;
-
-    final headquarterError = validateHeadquarter(headquarter);
-    if (headquarterError != null) return headquarterError;
-
-    final areaError = validateArea(area);
-    if (areaError != null) return areaError;
-
-    final contactPersonError = validateContactPerson(contactPerson);
-    if (contactPersonError != null) return contactPersonError;
-
-    final phoneError = validatePhoneNo(phoneNo);
-    if (phoneError != null) return phoneError;
-
-    final addressError = validateAddress(address);
-    if (addressError != null) return addressError;
-
-    final doctorError = validateAttachedDoctor(attachedDoctor);
-    if (doctorError != null) return doctorError;
-
-    final trimmedName = name.trim();
-    if (isDuplicateMedical(trimmedName, excluding: oldEntry)) {
-      return 'Medical facility "$trimmedName" already exists';
-    }
-
-    final index = _medicalsList.indexOf(oldEntry);
-    if (index != -1) {
-      _medicalsList[index] = MedicalEntry(
+    try {
+      final newMedical = MedicalEntry(
         name: trimmedName,
         headquarter: headquarter,
         area: area,
@@ -186,13 +183,83 @@ class MedicalManagementService {
         address: address.trim(),
         attachedDoctor: attachedDoctor,
       );
-    }
 
-    return 'success';
+      await _medicalRepository.createMedical(newMedical);
+      _medicalsList.add(newMedical);
+      return 'success';
+    } catch (e) {
+      return 'Failed to add medical: ${e.toString()}';
+    }
   }
 
-  void deleteMedical(MedicalEntry entry) {
-    _medicalsList.remove(entry);
+  Future<String> editMedical({
+    required MedicalEntry oldEntry,
+    required String name,
+    required String headquarter,
+    required String area,
+    required String contactPerson,
+    required String phoneNo,
+    required String address,
+    required String attachedDoctor,
+  }) async {
+    // Validate all fields
+    final nameError = validateName(name);
+    if (nameError != null) return nameError;
+
+    final headquarterError = validateHeadquarter(headquarter);
+    if (headquarterError != null) return headquarterError;
+
+    final areaError = validateArea(area);
+    if (areaError != null) return areaError;
+
+    final contactPersonError = validateContactPerson(contactPerson);
+    if (contactPersonError != null) return contactPersonError;
+
+    final phoneError = validatePhoneNo(phoneNo);
+    if (phoneError != null) return phoneError;
+
+    final addressError = validateAddress(address);
+    if (addressError != null) return addressError;
+
+    final doctorError = validateAttachedDoctor(attachedDoctor);
+    if (doctorError != null) return doctorError;
+
+    final trimmedName = name.trim();
+    if (await isDuplicateMedical(trimmedName, excluding: oldEntry)) {
+      return 'Medical facility "$trimmedName" already exists';
+    }
+
+    try {
+      final updatedMedical = oldEntry.copyWith(
+        name: trimmedName,
+        headquarter: headquarter,
+        area: area,
+        contactPerson: contactPerson.trim(),
+        phoneNo: phoneNo.trim(),
+        address: address.trim(),
+        attachedDoctor: attachedDoctor,
+      );
+
+      await _medicalRepository.updateMedical(updatedMedical);
+
+      final index = _medicalsList.indexOf(oldEntry);
+      if (index != -1) {
+        _medicalsList[index] = updatedMedical;
+      }
+      return 'success';
+    } catch (e) {
+      return 'Failed to update medical: ${e.toString()}';
+    }
+  }
+
+  // Delete medical with database integration
+  Future<void> deleteMedical(MedicalEntry entry) async {
+    try {
+      await _medicalRepository.deleteMedical(entry.id!);
+      _medicalsList.remove(entry);
+    } catch (e) {
+      throw Exception('Failed to delete medical: ${e.toString()}');
+    }
   }
 
   // Dialog helper methods
@@ -233,7 +300,7 @@ class MedicalManagementService {
     String? selectedDoctor = editEntry?.attachedDoctor;
 
     // Get available options
-    final availableHeadquarters = _headquartersService.headquartersList;
+    final availableHeadquarters = _headquartersService.headquartersNames;
     final availableAreas = _areaService.areas;
     final availableDoctors = _doctorService.doctorsList;
 
@@ -277,14 +344,14 @@ class MedicalManagementService {
                       ),
                       items: availableHeadquarters.isEmpty
                           ? [
-                              const DropdownMenuItem(
+                              const DropdownMenuItem<String>(
                                 value: null,
                                 child: Text('No headquarters available'),
                               ),
                             ]
                           : availableHeadquarters
                                 .map(
-                                  (hq) => DropdownMenuItem(
+                                  (hq) => DropdownMenuItem<String>(
                                     value: hq,
                                     child: Text(hq),
                                   ),
@@ -431,11 +498,11 @@ class MedicalManagementService {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (formKey.currentState!.validate()) {
                   String result;
                   if (editEntry == null) {
-                    result = addMedical(
+                    result = await addMedical(
                       name: nameController.text,
                       headquarter: selectedHeadquarter!,
                       area: selectedArea!,
@@ -445,7 +512,7 @@ class MedicalManagementService {
                       attachedDoctor: selectedDoctor!,
                     );
                   } else {
-                    result = editMedical(
+                    result = await editMedical(
                       oldEntry: editEntry,
                       name: nameController.text,
                       headquarter: selectedHeadquarter!,

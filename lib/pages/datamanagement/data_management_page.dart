@@ -56,6 +56,24 @@ class _DataManagementPageState extends State<DataManagementPage>
   @override
   void initState() {
     super.initState();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    // Load data from Supabase when page loads
+    await Future.wait([
+      _specialtyService.loadSpecialties(),
+      _headquartersService.loadHeadquarters(),
+      _areaService.loadAreas(),
+      _mrService.loadMRs(),
+      _medicalService.loadMedicals(),
+      _doctorService.loadDoctors(),
+      _stockistService.loadStockists(),
+    ]);
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -76,8 +94,37 @@ class _DataManagementPageState extends State<DataManagementPage>
     });
   }
 
-  void _refreshCurrentSection() {
-    setState(() {});
+  Future<void> _refreshCurrentSection() async {
+    // Reload data from Supabase based on current section
+    switch (selectedCategory) {
+      case 'Specialties':
+        await _specialtyService.loadSpecialties();
+        break;
+      case 'Headquarters':
+        await _headquartersService.loadHeadquarters();
+        break;
+      case 'Areas':
+        await _areaService.loadAreas();
+        break;
+      case 'MR':
+        await _mrService.loadMRs();
+        break;
+      case 'Medicals':
+        await _medicalService.loadMedicals();
+        break;
+      case 'Doctors':
+        await _doctorService.loadDoctors();
+        break;
+      case 'Stockist':
+        await _stockistService.loadStockists();
+        break;
+      default:
+        break;
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -127,7 +174,7 @@ class _DataManagementPageState extends State<DataManagementPage>
 
   Widget _buildSpecialtySection() {
     // Filter specialties based on search query
-    final filteredSpecialties = _specialtyService.specialtyList.where((
+    final filteredSpecialties = _specialtyService.specialtyNames.where((
       specialty,
     ) {
       return specialty.toLowerCase().contains(
@@ -245,15 +292,15 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'specialty',
                                   specialty,
-                                  () {
-                                    _specialtyService.deleteSpecialty(
+                                  () async {
+                                    await _specialtyService.deleteSpecialty(
                                       specialty,
                                     );
-                                    _refreshCurrentSection();
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -271,7 +318,7 @@ class _DataManagementPageState extends State<DataManagementPage>
 
   Widget _buildHeadquartersSection() {
     // Filter headquarters based on search query
-    final filteredHeadquarters = _headquartersService.headquartersList.where((
+    final filteredHeadquarters = _headquartersService.headquartersNames.where((
       headquarters,
     ) {
       return headquarters.toLowerCase().contains(
@@ -389,15 +436,14 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'headquarters',
                                   headquarters,
-                                  () {
-                                    _headquartersService.deleteHeadquarters(
-                                      headquarters,
-                                    );
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _headquartersService
+                                        .deleteHeadquarters(headquarters);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -532,13 +578,13 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'area',
                                   area.area,
-                                  () {
-                                    _areaService.deleteArea(area);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _areaService.deleteArea(area);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -672,13 +718,13 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'MR',
                                   mr.name,
-                                  () {
-                                    _mrService.deleteMR(mr);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _mrService.deleteMR(mr);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -832,13 +878,15 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'medical facility',
                                   medical.name,
-                                  () {
-                                    _medicalService.deleteMedical(medical);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _medicalService.deleteMedical(
+                                      medical,
+                                    );
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -855,6 +903,58 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildDoctorSection() {
+    // Show loading state
+    if (_doctorService.isLoading) {
+      return const Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading doctors...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show error state
+    if (_doctorService.error != null) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading doctors',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _doctorService.error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  await _doctorService.loadDoctors();
+                  setState(() {});
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     // Filter doctors based on search query
     final filteredDoctors = _doctorService.doctorsList.where((doctor) {
       return doctor.name.toLowerCase().contains(
@@ -983,13 +1083,13 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'doctor',
                                   doctor.name,
-                                  () {
-                                    _doctorService.deleteDoctor(doctor);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _doctorService.deleteDoctor(doctor);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -1140,13 +1240,15 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'stockist',
                                   stockist.name,
-                                  () {
-                                    _stockistService.deleteStockist(stockist);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _stockistService.deleteStockist(
+                                      stockist,
+                                    );
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -1162,11 +1264,11 @@ class _DataManagementPageState extends State<DataManagementPage>
     );
   }
 
-  void _showDeleteConfirmation(
+  void _showAsyncDeleteConfirmation(
     BuildContext context,
     String itemType,
     String itemName,
-    VoidCallback onConfirm,
+    Future<void> Function() onConfirm,
   ) {
     showDialog(
       context: context,
@@ -1181,15 +1283,24 @@ class _DataManagementPageState extends State<DataManagementPage>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              onConfirm();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$itemName deleted successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              try {
+                await onConfirm();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$itemName deleted successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete $itemName: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
