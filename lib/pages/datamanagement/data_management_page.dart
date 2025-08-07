@@ -31,13 +31,60 @@ class _DataManagementPageState extends State<DataManagementPage>
   final HeadquartersManagementService _headquartersService =
       HeadquartersManagementService();
 
+  // Search controllers for each section
+  final TextEditingController _specialtySearchController =
+      TextEditingController();
+  final TextEditingController _headquartersSearchController =
+      TextEditingController();
+  final TextEditingController _areaSearchController = TextEditingController();
+  final TextEditingController _mrSearchController = TextEditingController();
+  final TextEditingController _medicalSearchController =
+      TextEditingController();
+  final TextEditingController _doctorSearchController = TextEditingController();
+  final TextEditingController _stockistSearchController =
+      TextEditingController();
+
+  // Search query strings
+  String _specialtySearchQuery = '';
+  String _headquartersSearchQuery = '';
+  String _areaSearchQuery = '';
+  String _mrSearchQuery = '';
+  String _medicalSearchQuery = '';
+  String _doctorSearchQuery = '';
+  String _stockistSearchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    // Load data from Supabase when page loads
+    await Future.wait([
+      _specialtyService.loadSpecialties(),
+      _headquartersService.loadHeadquarters(),
+      _areaService.loadAreas(),
+      _mrService.loadMRs(),
+      _medicalService.loadMedicals(),
+      _doctorService.loadDoctors(),
+      _stockistService.loadStockists(),
+    ]);
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _specialtySearchController.dispose();
+    _headquartersSearchController.dispose();
+    _areaSearchController.dispose();
+    _mrSearchController.dispose();
+    _medicalSearchController.dispose();
+    _doctorSearchController.dispose();
+    _stockistSearchController.dispose();
     super.dispose();
   }
 
@@ -47,8 +94,37 @@ class _DataManagementPageState extends State<DataManagementPage>
     });
   }
 
-  void _refreshCurrentSection() {
-    setState(() {});
+  Future<void> _refreshCurrentSection() async {
+    // Reload data from Supabase based on current section
+    switch (selectedCategory) {
+      case 'Specialties':
+        await _specialtyService.loadSpecialties();
+        break;
+      case 'Headquarters':
+        await _headquartersService.loadHeadquarters();
+        break;
+      case 'Areas':
+        await _areaService.loadAreas();
+        break;
+      case 'MR':
+        await _mrService.loadMRs();
+        break;
+      case 'Medicals':
+        await _medicalService.loadMedicals();
+        break;
+      case 'Doctors':
+        await _doctorService.loadDoctors();
+        break;
+      case 'Stockist':
+        await _stockistService.loadStockists();
+        break;
+      default:
+        break;
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -97,6 +173,15 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildSpecialtySection() {
+    // Filter specialties based on search query
+    final filteredSpecialties = _specialtyService.specialtyNames.where((
+      specialty,
+    ) {
+      return specialty.toLowerCase().contains(
+        _specialtySearchQuery.toLowerCase(),
+      );
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -109,61 +194,79 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.medical_services, color: Colors.blue),
                   const SizedBox(width: 12),
                   const Text(
-                    'Medical Specialties Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Specialties',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () => _specialtyService.showAddSpecialtyDialog(
-                      context,
-                      _refreshCurrentSection,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _specialtySearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _specialtySearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search specialties...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _specialtySearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _specialtySearchController.clear();
+                                  setState(() {
+                                    _specialtySearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Specialty'),
                   ),
-                ],
-              ),
-            ),
-          ),
-          Card(
-            margin: const EdgeInsets.all(8),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.medical_services, color: Colors.blue),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Medical Specialties Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
                   ElevatedButton.icon(
                     onPressed: () => _specialtyService.showAddSpecialtyDialog(
                       context,
                       _refreshCurrentSection,
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Specialty'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
+
           Expanded(
-            child: _specialtyService.specialtyList.isEmpty
-                ? const Center(
+            child: filteredSpecialties.isEmpty
+                ? Center(
                     child: Text(
-                      'No specialties added yet.\nClick "Add Specialty" to get started.',
+                      _specialtySearchQuery.isNotEmpty
+                          ? 'No specialties found matching "$_specialtySearchQuery"'
+                          : 'No specialties added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _specialtyService.specialtyList.length,
+                    itemCount: filteredSpecialties.length,
                     itemBuilder: (context, index) {
-                      final specialty = _specialtyService.specialtyList[index];
+                      final specialty = filteredSpecialties[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -189,15 +292,15 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'specialty',
                                   specialty,
-                                  () {
-                                    _specialtyService.deleteSpecialty(
+                                  () async {
+                                    await _specialtyService.deleteSpecialty(
                                       specialty,
                                     );
-                                    _refreshCurrentSection();
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -214,6 +317,15 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildHeadquartersSection() {
+    // Filter headquarters based on search query
+    final filteredHeadquarters = _headquartersService.headquartersNames.where((
+      headquarters,
+    ) {
+      return headquarters.toLowerCase().contains(
+        _headquartersSearchQuery.toLowerCase(),
+      );
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -226,38 +338,79 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.location_city, color: Colors.green),
                   const SizedBox(width: 12),
                   const Text(
-                    'Headquarters Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Headquarters',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _headquartersSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _headquartersSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search headquarters...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _headquartersSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _headquartersSearchController.clear();
+                                  setState(() {
+                                    _headquartersSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () =>
                         _headquartersService.showAddHeadquartersDialog(
                           context,
                           _refreshCurrentSection,
                         ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Headquarters'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _headquartersService.headquartersList.isEmpty
-                ? const Center(
+            child: filteredHeadquarters.isEmpty
+                ? Center(
                     child: Text(
-                      'No headquarters added yet.\nClick "Add Headquarters" to get started.',
+                      _headquartersSearchQuery.isNotEmpty
+                          ? 'No headquarters found matching "$_headquartersSearchQuery"'
+                          : 'No headquarters added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _headquartersService.headquartersList.length,
+                    itemCount: filteredHeadquarters.length,
                     itemBuilder: (context, index) {
-                      final headquarters =
-                          _headquartersService.headquartersList[index];
+                      final headquarters = filteredHeadquarters[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -283,15 +436,14 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'headquarters',
                                   headquarters,
-                                  () {
-                                    _headquartersService.deleteHeadquarters(
-                                      headquarters,
-                                    );
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _headquartersService
+                                        .deleteHeadquarters(headquarters);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -308,6 +460,14 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildAreaSection() {
+    // Filter areas based on search query
+    final filteredAreas = _areaService.areas.where((area) {
+      return area.area.toLowerCase().contains(_areaSearchQuery.toLowerCase()) ||
+          area.headquarter.toLowerCase().contains(
+            _areaSearchQuery.toLowerCase(),
+          );
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -320,36 +480,78 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.map, color: Colors.orange),
                   const SizedBox(width: 12),
                   const Text(
-                    'Area Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Areas',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _areaSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _areaSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search areas, headquarters...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _areaSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _areaSearchController.clear();
+                                  setState(() {
+                                    _areaSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _areaService.showAddAreaDialog(
                       context,
                       _refreshCurrentSection,
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Area'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _areaService.areas.isEmpty
-                ? const Center(
+            child: filteredAreas.isEmpty
+                ? Center(
                     child: Text(
-                      'No areas added yet.\nClick "Add Area" to get started.',
+                      _areaSearchQuery.isNotEmpty
+                          ? 'No areas found matching "$_areaSearchQuery"'
+                          : 'No areas added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _areaService.areas.length,
+                    itemCount: filteredAreas.length,
                     itemBuilder: (context, index) {
-                      final area = _areaService.areas[index];
+                      final area = filteredAreas[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -376,13 +578,13 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'area',
                                   area.area,
-                                  () {
-                                    _areaService.deleteArea(area);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _areaService.deleteArea(area);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -399,6 +601,14 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildMRSection() {
+    // Filter MRs based on search query
+    final filteredMRs = _mrService.mrList.where((mr) {
+      return mr.name.toLowerCase().contains(_mrSearchQuery.toLowerCase()) ||
+          mr.phoneNo.toLowerCase().contains(_mrSearchQuery.toLowerCase()) ||
+          mr.areaName.toLowerCase().contains(_mrSearchQuery.toLowerCase()) ||
+          mr.headquarter.toLowerCase().contains(_mrSearchQuery.toLowerCase());
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -411,36 +621,78 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.person_outline, color: Colors.purple),
                   const SizedBox(width: 12),
                   const Text(
-                    'Medical Representative Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'MR',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _mrSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _mrSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search MRs by name, phone, area...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _mrSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _mrSearchController.clear();
+                                  setState(() {
+                                    _mrSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _mrService.showAddMRDialog(
                       context,
                       _refreshCurrentSection,
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add MR'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _mrService.mrList.isEmpty
-                ? const Center(
+            child: filteredMRs.isEmpty
+                ? Center(
                     child: Text(
-                      'No medical representatives added yet.\nClick "Add MR" to get started.',
+                      _mrSearchQuery.isNotEmpty
+                          ? 'No medical representatives found matching "$_mrSearchQuery"'
+                          : 'No medical representatives added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _mrService.mrList.length,
+                    itemCount: filteredMRs.length,
                     itemBuilder: (context, index) {
-                      final mr = _mrService.mrList[index];
+                      final mr = filteredMRs[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -466,13 +718,13 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'MR',
                                   mr.name,
-                                  () {
-                                    _mrService.deleteMR(mr);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _mrService.deleteMR(mr);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -489,6 +741,31 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildMedicalSection() {
+    // Filter medical facilities based on search query
+    final filteredMedicals = _medicalService.medicalsList.where((medical) {
+      return medical.name.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.headquarter.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.area.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.contactPerson.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.phoneNo.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.address.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.attachedDoctor.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          );
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -501,43 +778,85 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.local_hospital, color: Colors.red),
                   const SizedBox(width: 12),
                   const Text(
-                    'Medical Facility Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Medicals',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _medicalSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _medicalSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, HQ, area, contact...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _medicalSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _medicalSearchController.clear();
+                                  setState(() {
+                                    _medicalSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _medicalService.showAddMedicalDialog(
                       context,
                       _refreshCurrentSection,
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Medical'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _medicalService.medicalsList.isEmpty
-                ? const Center(
+            child: filteredMedicals.isEmpty
+                ? Center(
                     child: Text(
-                      'No medical facilities added yet.\nClick "Add Medical" to get started.',
+                      _medicalSearchQuery.isNotEmpty
+                          ? 'No medical facilities found matching "$_medicalSearchQuery"'
+                          : 'No medical facilities added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _medicalService.medicalsList.length,
+                    itemCount: filteredMedicals.length,
                     itemBuilder: (context, index) {
-                      final medical = _medicalService.medicalsList[index];
+                      final medical = filteredMedicals[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
                           leading: const Icon(Icons.local_hospital),
                           title: Text(medical.name),
                           subtitle: Text(
-                            '${medical.type} • ${medical.contact}',
+                            '${medical.contactPerson} • ${medical.phoneNo} • ${medical.area}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -559,13 +878,15 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'medical facility',
                                   medical.name,
-                                  () {
-                                    _medicalService.deleteMedical(medical);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _medicalService.deleteMedical(
+                                      medical,
+                                    );
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -582,6 +903,74 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildDoctorSection() {
+    // Show loading state
+    if (_doctorService.isLoading) {
+      return const Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading doctors...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show error state
+    if (_doctorService.error != null) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Error loading doctors',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _doctorService.error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  await _doctorService.loadDoctors();
+                  setState(() {});
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Filter doctors based on search query
+    final filteredDoctors = _doctorService.doctorsList.where((doctor) {
+      return doctor.name.toLowerCase().contains(
+            _doctorSearchQuery.toLowerCase(),
+          ) ||
+          doctor.specialty.toLowerCase().contains(
+            _doctorSearchQuery.toLowerCase(),
+          ) ||
+          doctor.area.toLowerCase().contains(
+            _doctorSearchQuery.toLowerCase(),
+          ) ||
+          doctor.phoneNo.toLowerCase().contains(
+            _doctorSearchQuery.toLowerCase(),
+          );
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -594,43 +983,85 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.person, color: Colors.teal),
                   const SizedBox(width: 12),
                   const Text(
-                    'Doctor Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Doctors',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _doctorSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _doctorSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, specialty, area, phone...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _doctorSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _doctorSearchController.clear();
+                                  setState(() {
+                                    _doctorSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _doctorService.showAddDoctorDialog(
                       context,
                       _refreshCurrentSection,
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Doctor'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _doctorService.doctorsList.isEmpty
-                ? const Center(
+            child: filteredDoctors.isEmpty
+                ? Center(
                     child: Text(
-                      'No doctors added yet.\nClick "Add Doctor" to get started.',
+                      _doctorSearchQuery.isNotEmpty
+                          ? 'No doctors found matching "$_doctorSearchQuery"'
+                          : 'No doctors added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _doctorService.doctorsList.length,
+                    itemCount: filteredDoctors.length,
                     itemBuilder: (context, index) {
-                      final doctor = _doctorService.doctorsList[index];
+                      final doctor = filteredDoctors[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
                           leading: const Icon(Icons.person),
                           title: Text('Dr. ${doctor.name}'),
                           subtitle: Text(
-                            '${doctor.qualification} • ${doctor.specialty}',
+                            '${doctor.specialty} • ${doctor.area} • ${doctor.phoneNo}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -652,13 +1083,13 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'doctor',
                                   doctor.name,
-                                  () {
-                                    _doctorService.deleteDoctor(doctor);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _doctorService.deleteDoctor(doctor);
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -675,6 +1106,28 @@ class _DataManagementPageState extends State<DataManagementPage>
   }
 
   Widget _buildStockistSection() {
+    // Filter stockists based on search query
+    final filteredStockists = _stockistService.stockistList.where((stockist) {
+      return stockist.name.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.company.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.contact.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.area.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.address.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.licenseNumber.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          );
+    }).toList();
+
     return Expanded(
       child: Column(
         children: [
@@ -687,36 +1140,78 @@ class _DataManagementPageState extends State<DataManagementPage>
                   const Icon(Icons.business, color: Colors.indigo),
                   const SizedBox(width: 12),
                   const Text(
-                    'Stockist Management',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Stockists',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _stockistSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _stockistSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, company, area, license...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _stockistSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _stockistSearchController.clear();
+                                  setState(() {
+                                    _stockistSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _stockistService.showAddStockistDialog(
                       context,
                       _refreshCurrentSection,
                     ),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Stockist'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: _stockistService.stockistList.isEmpty
-                ? const Center(
+            child: filteredStockists.isEmpty
+                ? Center(
                     child: Text(
-                      'No stockists added yet.\nClick "Add Stockist" to get started.',
+                      _stockistSearchQuery.isNotEmpty
+                          ? 'No stockists found matching "$_stockistSearchQuery"'
+                          : 'No stockists added yet.\nClick "Add" to get started.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: _stockistService.stockistList.length,
+                    itemCount: filteredStockists.length,
                     itemBuilder: (context, index) {
-                      final stockist = _stockistService.stockistList[index];
+                      final stockist = filteredStockists[index];
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         child: ListTile(
@@ -745,13 +1240,15 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   Icons.delete,
                                   color: Colors.red,
                                 ),
-                                onPressed: () => _showDeleteConfirmation(
+                                onPressed: () => _showAsyncDeleteConfirmation(
                                   context,
                                   'stockist',
                                   stockist.name,
-                                  () {
-                                    _stockistService.deleteStockist(stockist);
-                                    _refreshCurrentSection();
+                                  () async {
+                                    await _stockistService.deleteStockist(
+                                      stockist,
+                                    );
+                                    await _refreshCurrentSection();
                                   },
                                 ),
                               ),
@@ -767,11 +1264,11 @@ class _DataManagementPageState extends State<DataManagementPage>
     );
   }
 
-  void _showDeleteConfirmation(
+  void _showAsyncDeleteConfirmation(
     BuildContext context,
     String itemType,
     String itemName,
-    VoidCallback onConfirm,
+    Future<void> Function() onConfirm,
   ) {
     showDialog(
       context: context,
@@ -786,15 +1283,24 @@ class _DataManagementPageState extends State<DataManagementPage>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              onConfirm();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$itemName deleted successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              try {
+                await onConfirm();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$itemName deleted successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete $itemName: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),

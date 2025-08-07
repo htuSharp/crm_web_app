@@ -1,63 +1,102 @@
+import 'package:uuid/uuid.dart';
+
 class DoctorEntry {
+  final String id;
   final String name;
   final String specialty;
-  final String qualification;
-  final String hospital;
-  final String contact;
-  final String address;
   final String area;
+  final DateTime? dateOfBirth;
+  final String phoneNo;
+  final DateTime? marriageAnniversary;
+  final List<String> callDays;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   DoctorEntry({
+    String? id,
     required this.name,
     required this.specialty,
-    required this.qualification,
-    required this.hospital,
-    required this.contact,
-    required this.address,
     required this.area,
-  });
+    this.dateOfBirth,
+    required this.phoneNo,
+    this.marriageAnniversary,
+    required this.callDays,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) : id = id ?? const Uuid().v4(),
+       createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   DoctorEntry copyWith({
+    String? id,
     String? name,
     String? specialty,
-    String? qualification,
-    String? hospital,
-    String? contact,
-    String? address,
     String? area,
+    DateTime? dateOfBirth,
+    String? phoneNo,
+    DateTime? marriageAnniversary,
+    List<String>? callDays,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return DoctorEntry(
+      id: id ?? this.id,
       name: name ?? this.name,
       specialty: specialty ?? this.specialty,
-      qualification: qualification ?? this.qualification,
-      hospital: hospital ?? this.hospital,
-      contact: contact ?? this.contact,
-      address: address ?? this.address,
       area: area ?? this.area,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      phoneNo: phoneNo ?? this.phoneNo,
+      marriageAnniversary: marriageAnniversary ?? this.marriageAnniversary,
+      callDays: callDays ?? this.callDays,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'specialty': specialty,
-      'qualification': qualification,
-      'hospital': hospital,
-      'contact': contact,
-      'address': address,
       'area': area,
+      'date_of_birth': dateOfBirth?.toIso8601String(),
+      'phone_no': phoneNo,
+      'marriage_anniversary': marriageAnniversary?.toIso8601String(),
+      'call_days': callDays,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
+  }
+
+  // For Supabase insert (excludes id if it should be auto-generated)
+  Map<String, dynamic> toSupabaseJson() {
+    final json = toJson();
+    // Remove fields that Supabase handles automatically
+    json.remove('created_at');
+    json.remove('updated_at');
+    return json;
   }
 
   factory DoctorEntry.fromJson(Map<String, dynamic> json) {
     return DoctorEntry(
+      id: json['id'] ?? '',
       name: json['name'] ?? '',
       specialty: json['specialty'] ?? '',
-      qualification: json['qualification'] ?? '',
-      hospital: json['hospital'] ?? '',
-      contact: json['contact'] ?? '',
-      address: json['address'] ?? '',
       area: json['area'] ?? '',
+      dateOfBirth: json['date_of_birth'] != null
+          ? DateTime.parse(json['date_of_birth'])
+          : null,
+      phoneNo: json['phone_no'] ?? '',
+      marriageAnniversary: json['marriage_anniversary'] != null
+          ? DateTime.parse(json['marriage_anniversary'])
+          : null,
+      callDays: List<String>.from(json['call_days'] ?? []),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : DateTime.now(),
     );
   }
 
@@ -65,27 +104,38 @@ class DoctorEntry {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is DoctorEntry &&
+        other.id == id &&
         other.name == name &&
         other.specialty == specialty &&
-        other.qualification == qualification &&
-        other.hospital == hospital &&
-        other.contact == contact &&
-        other.address == address &&
-        other.area == area;
+        other.area == area &&
+        other.dateOfBirth == dateOfBirth &&
+        other.phoneNo == phoneNo &&
+        other.marriageAnniversary == marriageAnniversary &&
+        _listEquals(other.callDays, callDays);
+  }
+
+  // Helper method for list equality
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
   int get hashCode {
-    return name.hashCode ^
+    return id.hashCode ^
+        name.hashCode ^
         specialty.hashCode ^
-        qualification.hashCode ^
-        hospital.hashCode ^
-        contact.hashCode ^
-        address.hashCode ^
-        area.hashCode;
+        area.hashCode ^
+        dateOfBirth.hashCode ^
+        phoneNo.hashCode ^
+        marriageAnniversary.hashCode ^
+        callDays.hashCode;
   }
 
   @override
   String toString() =>
-      'DoctorEntry(name: $name, specialty: $specialty, qualification: $qualification, hospital: $hospital, contact: $contact, address: $address, area: $area)';
+      'DoctorEntry(id: $id, name: $name, specialty: $specialty, area: $area, dateOfBirth: $dateOfBirth, phoneNo: $phoneNo, marriageAnniversary: $marriageAnniversary, callDays: $callDays, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
