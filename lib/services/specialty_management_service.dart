@@ -1,9 +1,55 @@
 import 'package:flutter/material.dart';
+import '../repositories/specialty_repository.dart';
 
 class SpecialtyManagementService {
-  final List<String> _specialtyList = [];
+  final List<Map<String, dynamic>> _specialtyList = [];
+  final SpecialtyRepository _specialtyRepository = SpecialtyRepository();
+  bool _isLoading = false;
+  String? _error;
 
-  List<String> get specialtyList => List.unmodifiable(_specialtyList);
+  List<Map<String, dynamic>> get specialtyList =>
+      List.unmodifiable(_specialtyList);
+  List<String> get specialtyNames =>
+      _specialtyList.map((s) => s['name'] as String).toList();
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  // Load specialties from Supabase
+  Future<void> loadSpecialties() async {
+    _isLoading = true;
+    _error = null;
+    try {
+      final specialties = await _specialtyRepository
+          .getAllSpecialtiesWithData();
+      _specialtyList.clear();
+      _specialtyList.addAll(specialties);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  // Search specialties in Supabase
+  Future<void> searchSpecialties(String query) async {
+    if (query.isEmpty) {
+      await loadSpecialties();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    try {
+      final specialties = await _specialtyRepository.searchSpecialties(query);
+      _specialtyList.clear();
+      // Convert string results to map format for consistency
+      _specialtyList.addAll(specialties.map((name) => {'name': name}).toList());
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
 
   // Common medical specialties
   static const List<String> commonSpecialties = [
@@ -46,44 +92,90 @@ class SpecialtyManagementService {
   }
 
   // Business logic methods
-  bool isDuplicateSpecialty(String specialty, {String? excluding}) {
-    return _specialtyList.any(
-      (item) =>
-          item.toLowerCase() == specialty.toLowerCase() && item != excluding,
-    );
+  Future<bool> isDuplicateSpecialty(
+    String specialty, {
+    String? excluding,
+  }) async {
+    try {
+      final specialties = await _specialtyRepository.getAllSpecialties();
+      return specialties.any(
+        (item) =>
+            item.toLowerCase() == specialty.toLowerCase() && item != excluding,
+      );
+    } catch (e) {
+      return false;
+    }
   }
 
-  String addSpecialty(String specialty) {
-    final error = validateSpecialty(specialty);
-    if (error != null) return error;
+  Future<String> addSpecialty(String specialty) async {
+    try {
+      final error = validateSpecialty(specialty);
+      if (error != null) return error;
 
-    final trimmedSpecialty = specialty.trim();
-    if (isDuplicateSpecialty(trimmedSpecialty)) {
-      return 'Specialty "$trimmedSpecialty" already exists';
+      final trimmedSpecialty = specialty.trim();
+      if (await isDuplicateSpecialty(trimmedSpecialty)) {
+        return 'Specialty "$trimmedSpecialty" already exists';
+      }
+
+      await _specialtyRepository.createSpecialty(trimmedSpecialty);
+      await loadSpecialties(); // Refresh the list
+      return 'success';
+    } catch (e) {
+      return 'Error adding specialty: ${e.toString()}';
     }
-
-    _specialtyList.add(trimmedSpecialty);
-    return 'success';
   }
 
-  String editSpecialty(String oldSpecialty, String newSpecialty) {
-    final error = validateSpecialty(newSpecialty);
-    if (error != null) return error;
+  Future<String> editSpecialty(String oldSpecialty, String newSpecialty) async {
+    try {
+      final error = validateSpecialty(newSpecialty);
+      if (error != null) return error;
 
-    final trimmedSpecialty = newSpecialty.trim();
-    if (isDuplicateSpecialty(trimmedSpecialty, excluding: oldSpecialty)) {
-      return 'Specialty "$trimmedSpecialty" already exists';
-    }
+      final trimmedSpecialty = newSpecialty.trim();
+      if (await isDuplicateSpecialty(
+        trimmedSpecialty,
+        excluding: oldSpecialty,
+      )) {
+        return 'Specialty "$trimmedSpecialty" already exists';
+      }
 
-    final index = _specialtyList.indexOf(oldSpecialty);
-    if (index != -1) {
-      _specialtyList[index] = trimmedSpecialty;
+      // Find the specialty ID
+      final specialty = _specialtyList.firstWhere(
+        (s) => s['name'] == oldSpecialty,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (specialty.isEmpty) {
+        return 'Specialty not found';
+      }
+
+      await _specialtyRepository.updateSpecialty(
+        specialty['id'],
+        trimmedSpecialty,
+      );
+      await loadSpecialties(); // Refresh the list
+      return 'success';
+    } catch (e) {
+      return 'Error editing specialty: ${e.toString()}';
     }
-    return 'success';
   }
 
-  void deleteSpecialty(String specialty) {
-    _specialtyList.remove(specialty);
+  Future<void> deleteSpecialty(String specialty) async {
+    try {
+      // Find the specialty ID
+      final specialtyData = _specialtyList.firstWhere(
+        (s) => s['name'] == specialty,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (specialtyData.isEmpty) {
+        throw Exception('Specialty not found');
+      }
+
+      await _specialtyRepository.deleteSpecialty(specialtyData['id']);
+      await loadSpecialties(); // Refresh the list
+    } catch (e) {
+      throw Exception('Error deleting specialty: ${e.toString()}');
+    }
   }
 
   // Dialog helper methods
@@ -160,12 +252,15 @@ class SpecialtyManagementService {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               String result;
               if (editSpecialty == null) {
-                result = addSpecialty(controller.text);
+                result = await addSpecialty(controller.text);
               } else {
-                result = this.editSpecialty(editSpecialty, controller.text);
+                result = await this.editSpecialty(
+                  editSpecialty,
+                  controller.text,
+                );
               }
 
               if (result == 'success') {

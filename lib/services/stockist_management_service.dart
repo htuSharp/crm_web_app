@@ -1,10 +1,51 @@
 import 'package:flutter/material.dart';
 import '../models/stockist_entry.dart';
+import '../repositories/stockist_repository.dart';
 
 class StockistManagementService {
   final List<StockistEntry> _stockistList = [];
+  final StockistRepository _stockistRepository = StockistRepository();
+  bool _isLoading = false;
+  String? _error;
 
   List<StockistEntry> get stockistList => List.unmodifiable(_stockistList);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  // Load stockists from Supabase
+  Future<void> loadStockists() async {
+    _isLoading = true;
+    _error = null;
+    try {
+      final stockists = await _stockistRepository.getAllStockists();
+      _stockistList.clear();
+      _stockistList.addAll(stockists);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  // Search stockists in Supabase
+  Future<void> searchStockists(String query) async {
+    if (query.isEmpty) {
+      await loadStockists();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    try {
+      final stockists = await _stockistRepository.searchStockists(query);
+      _stockistList.clear();
+      _stockistList.addAll(stockists);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
 
   // Common company types
   static const List<String> companyTypes = [
@@ -80,29 +121,46 @@ class StockistManagementService {
   }
 
   // Business logic methods
-  bool isDuplicateStockist(String name, {StockistEntry? excluding}) {
-    return _stockistList.any(
-      (entry) =>
-          entry.name.toLowerCase() == name.toLowerCase() && entry != excluding,
-    );
+  Future<bool> isDuplicateStockist(
+    String name, {
+    StockistEntry? excluding,
+  }) async {
+    try {
+      final stockists = await _stockistRepository.searchStockists(name);
+      return stockists.any(
+        (entry) =>
+            entry.name.toLowerCase() == name.toLowerCase() &&
+            entry != excluding,
+      );
+    } catch (e) {
+      return false; // If error, allow operation to proceed
+    }
   }
 
-  bool isDuplicateLicense(String license, {StockistEntry? excluding}) {
-    return _stockistList.any(
-      (entry) =>
-          entry.licenseNumber.toLowerCase() == license.toLowerCase() &&
-          entry != excluding,
-    );
+  Future<bool> isDuplicateLicense(
+    String license, {
+    StockistEntry? excluding,
+  }) async {
+    try {
+      final stockists = await _stockistRepository.searchStockists(license);
+      return stockists.any(
+        (entry) =>
+            entry.licenseNumber.toLowerCase() == license.toLowerCase() &&
+            entry != excluding,
+      );
+    } catch (e) {
+      return false; // If error, allow operation to proceed
+    }
   }
 
-  String addStockist({
+  Future<String> addStockist({
     required String name,
     required String company,
     required String contact,
     required String address,
     required String area,
     required String licenseNumber,
-  }) {
+  }) async {
     // Validate all fields
     final nameError = validateName(name);
     if (nameError != null) return nameError;
@@ -125,70 +183,16 @@ class StockistManagementService {
     final trimmedName = name.trim();
     final trimmedLicense = licenseNumber.trim();
 
-    if (isDuplicateStockist(trimmedName)) {
+    if (await isDuplicateStockist(trimmedName)) {
       return 'Stockist "$trimmedName" already exists';
     }
 
-    if (isDuplicateLicense(trimmedLicense)) {
+    if (await isDuplicateLicense(trimmedLicense)) {
       return 'License number "$trimmedLicense" already exists';
     }
 
-    _stockistList.add(
-      StockistEntry(
-        name: trimmedName,
-        company: company.trim(),
-        contact: contact.trim(),
-        address: address.trim(),
-        area: area.trim(),
-        licenseNumber: trimmedLicense,
-      ),
-    );
-
-    return 'success';
-  }
-
-  String editStockist({
-    required StockistEntry oldEntry,
-    required String name,
-    required String company,
-    required String contact,
-    required String address,
-    required String area,
-    required String licenseNumber,
-  }) {
-    // Validate all fields
-    final nameError = validateName(name);
-    if (nameError != null) return nameError;
-
-    final companyError = validateCompany(company);
-    if (companyError != null) return companyError;
-
-    final contactError = validateContact(contact);
-    if (contactError != null) return contactError;
-
-    final addressError = validateAddress(address);
-    if (addressError != null) return addressError;
-
-    final areaError = validateArea(area);
-    if (areaError != null) return areaError;
-
-    final licenseError = validateLicenseNumber(licenseNumber);
-    if (licenseError != null) return licenseError;
-
-    final trimmedName = name.trim();
-    final trimmedLicense = licenseNumber.trim();
-
-    if (isDuplicateStockist(trimmedName, excluding: oldEntry)) {
-      return 'Stockist "$trimmedName" already exists';
-    }
-
-    if (isDuplicateLicense(trimmedLicense, excluding: oldEntry)) {
-      return 'License number "$trimmedLicense" already exists';
-    }
-
-    final index = _stockistList.indexOf(oldEntry);
-    if (index != -1) {
-      _stockistList[index] = StockistEntry(
+    try {
+      final newStockist = StockistEntry(
         name: trimmedName,
         company: company.trim(),
         contact: contact.trim(),
@@ -196,13 +200,84 @@ class StockistManagementService {
         area: area.trim(),
         licenseNumber: trimmedLicense,
       );
-    }
 
-    return 'success';
+      await _stockistRepository.createStockist(newStockist);
+      _stockistList.add(newStockist);
+      return 'success';
+    } catch (e) {
+      return 'Failed to add stockist: ${e.toString()}';
+    }
   }
 
-  void deleteStockist(StockistEntry entry) {
-    _stockistList.remove(entry);
+  Future<String> editStockist({
+    required StockistEntry oldEntry,
+    required String name,
+    required String company,
+    required String contact,
+    required String address,
+    required String area,
+    required String licenseNumber,
+  }) async {
+    // Validate all fields
+    final nameError = validateName(name);
+    if (nameError != null) return nameError;
+
+    final companyError = validateCompany(company);
+    if (companyError != null) return companyError;
+
+    final contactError = validateContact(contact);
+    if (contactError != null) return contactError;
+
+    final addressError = validateAddress(address);
+    if (addressError != null) return addressError;
+
+    final areaError = validateArea(area);
+    if (areaError != null) return areaError;
+
+    final licenseError = validateLicenseNumber(licenseNumber);
+    if (licenseError != null) return licenseError;
+
+    final trimmedName = name.trim();
+    final trimmedLicense = licenseNumber.trim();
+
+    if (await isDuplicateStockist(trimmedName, excluding: oldEntry)) {
+      return 'Stockist "$trimmedName" already exists';
+    }
+
+    if (await isDuplicateLicense(trimmedLicense, excluding: oldEntry)) {
+      return 'License number "$trimmedLicense" already exists';
+    }
+
+    try {
+      final updatedStockist = oldEntry.copyWith(
+        name: trimmedName,
+        company: company.trim(),
+        contact: contact.trim(),
+        address: address.trim(),
+        area: area.trim(),
+        licenseNumber: trimmedLicense,
+      );
+
+      await _stockistRepository.updateStockist(updatedStockist);
+
+      final index = _stockistList.indexOf(oldEntry);
+      if (index != -1) {
+        _stockistList[index] = updatedStockist;
+      }
+      return 'success';
+    } catch (e) {
+      return 'Failed to update stockist: ${e.toString()}';
+    }
+  }
+
+  // Delete stockist with database integration
+  Future<void> deleteStockist(StockistEntry entry) async {
+    try {
+      await _stockistRepository.deleteStockist(entry.id!);
+      _stockistList.remove(entry);
+    } catch (e) {
+      throw Exception('Failed to delete stockist: ${e.toString()}');
+    }
   }
 
   // Dialog helper methods
@@ -337,11 +412,11 @@ class StockistManagementService {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (formKey.currentState!.validate()) {
                 String result;
                 if (editEntry == null) {
-                  result = addStockist(
+                  result = await addStockist(
                     name: nameController.text,
                     company: companyController.text,
                     contact: contactController.text,
@@ -350,7 +425,7 @@ class StockistManagementService {
                     licenseNumber: licenseController.text,
                   );
                 } else {
-                  result = editStockist(
+                  result = await editStockist(
                     oldEntry: editEntry,
                     name: nameController.text,
                     company: companyController.text,

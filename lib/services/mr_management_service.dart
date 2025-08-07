@@ -2,11 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/mr_entry.dart';
 import '../constants/data_management_constants.dart';
+import '../repositories/mr_repository.dart';
 
 class MRManagementService {
   final List<MREntry> _mrList = [];
+  final MRRepository _mrRepository = MRRepository();
+  bool _isLoading = false;
+  String? _error;
 
   List<MREntry> get mrList => List.unmodifiable(_mrList);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  // Load MRs from Supabase
+  Future<void> loadMRs() async {
+    _isLoading = true;
+    _error = null;
+    try {
+      final mrs = await _mrRepository.getAllMRs();
+      _mrList.clear();
+      _mrList.addAll(mrs);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  // Search MRs in Supabase
+  Future<void> searchMRs(String query) async {
+    if (query.isEmpty) {
+      await loadMRs();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    try {
+      final mrs = await _mrRepository.searchMRs(query);
+      _mrList.clear();
+      _mrList.addAll(mrs);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+    }
+  }
 
   // Validation methods
   String? validateName(String name) {
@@ -103,14 +144,20 @@ class MRManagementService {
   }
 
   // Business logic methods
-  bool isDuplicateMR(String name, {MREntry? excluding}) {
-    return _mrList.any(
-      (entry) =>
-          entry.name.toLowerCase() == name.toLowerCase() && entry != excluding,
-    );
+  Future<bool> isDuplicateMR(String name, {MREntry? excluding}) async {
+    try {
+      final mrs = await _mrRepository.searchMRs(name);
+      return mrs.any(
+        (entry) =>
+            entry.name.toLowerCase() == name.toLowerCase() &&
+            entry != excluding,
+      );
+    } catch (e) {
+      return false; // If error, allow operation to proceed
+    }
   }
 
-  String addMR({
+  Future<String> addMR({
     required String name,
     required String age,
     required String sex,
@@ -121,7 +168,7 @@ class MRManagementService {
     required String bankName,
     required String ifscCode,
     required String headquarter,
-  }) {
+  }) async {
     // Validate all fields
     final nameError = validateName(name);
     if (nameError != null) return nameError;
@@ -151,12 +198,12 @@ class MRManagementService {
     if (hqError != null) return hqError;
 
     final trimmedName = name.trim();
-    if (isDuplicateMR(trimmedName)) {
+    if (await isDuplicateMR(trimmedName)) {
       return 'MR "$trimmedName" already exists';
     }
 
-    _mrList.add(
-      MREntry(
+    try {
+      final newMR = MREntry(
         name: trimmedName,
         age: int.parse(age),
         sex: sex,
@@ -167,13 +214,17 @@ class MRManagementService {
         bankName: bankName.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
         headquarter: headquarter,
-      ),
-    );
+      ).withGeneratedId();
 
-    return 'success';
+      await _mrRepository.createMR(newMR);
+      _mrList.add(newMR);
+      return 'success';
+    } catch (e) {
+      return 'Failed to add MR: ${e.toString()}';
+    }
   }
 
-  String editMR({
+  Future<String> editMR({
     required MREntry oldEntry,
     required String name,
     required String age,
@@ -185,7 +236,7 @@ class MRManagementService {
     required String bankName,
     required String ifscCode,
     required String headquarter,
-  }) {
+  }) async {
     // Validate all fields
     final nameError = validateName(name);
     if (nameError != null) return nameError;
@@ -215,13 +266,12 @@ class MRManagementService {
     if (hqError != null) return hqError;
 
     final trimmedName = name.trim();
-    if (isDuplicateMR(trimmedName, excluding: oldEntry)) {
+    if (await isDuplicateMR(trimmedName, excluding: oldEntry)) {
       return 'MR "$trimmedName" already exists';
     }
 
-    final index = _mrList.indexOf(oldEntry);
-    if (index != -1) {
-      _mrList[index] = MREntry(
+    try {
+      final updatedMR = oldEntry.copyWith(
         name: trimmedName,
         age: int.parse(age),
         sex: sex,
@@ -233,13 +283,27 @@ class MRManagementService {
         ifscCode: ifscCode.trim().toUpperCase(),
         headquarter: headquarter,
       );
-    }
 
-    return 'success';
+      await _mrRepository.updateMR(updatedMR);
+
+      final index = _mrList.indexOf(oldEntry);
+      if (index != -1) {
+        _mrList[index] = updatedMR;
+      }
+      return 'success';
+    } catch (e) {
+      return 'Failed to update MR: ${e.toString()}';
+    }
   }
 
-  void deleteMR(MREntry entry) {
-    _mrList.remove(entry);
+  // Delete MR with database integration
+  Future<void> deleteMR(MREntry entry) async {
+    try {
+      await _mrRepository.deleteMR(entry.id!);
+      _mrList.remove(entry);
+    } catch (e) {
+      throw Exception('Failed to delete MR: ${e.toString()}');
+    }
   }
 
   // Dialog helper method
@@ -468,11 +532,11 @@ class MRManagementService {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (formKey.currentState!.validate() && selectedHQ != null) {
                 String result;
                 if (editEntry == null) {
-                  result = addMR(
+                  result = await addMR(
                     name: nameController.text,
                     age: ageController.text,
                     sex: selectedSex,
@@ -485,7 +549,7 @@ class MRManagementService {
                     headquarter: selectedHQ!,
                   );
                 } else {
-                  result = editMR(
+                  result = await editMR(
                     oldEntry: editEntry,
                     name: nameController.text,
                     age: ageController.text,
