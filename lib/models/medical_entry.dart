@@ -1,51 +1,63 @@
 class MedicalEntry {
   final String name;
-  final String type;
-  final String contact;
+  final String headquarter;
+  final String area;
+  final String contactPerson;
+  final String phoneNo;
   final String address;
-  final String specialization;
+  final String attachedDoctor;
 
   MedicalEntry({
     required this.name,
-    required this.type,
-    required this.contact,
+    required this.headquarter,
+    required this.area,
+    required this.contactPerson,
+    required this.phoneNo,
     required this.address,
-    required this.specialization,
+    required this.attachedDoctor,
   });
 
   MedicalEntry copyWith({
     String? name,
-    String? type,
-    String? contact,
+    String? headquarter,
+    String? area,
+    String? contactPerson,
+    String? phoneNo,
     String? address,
-    String? specialization,
+    String? attachedDoctor,
   }) {
     return MedicalEntry(
       name: name ?? this.name,
-      type: type ?? this.type,
-      contact: contact ?? this.contact,
+      headquarter: headquarter ?? this.headquarter,
+      area: area ?? this.area,
+      contactPerson: contactPerson ?? this.contactPerson,
+      phoneNo: phoneNo ?? this.phoneNo,
       address: address ?? this.address,
-      specialization: specialization ?? this.specialization,
+      attachedDoctor: attachedDoctor ?? this.attachedDoctor,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'type': type,
-      'contact': contact,
+      'headquarter': headquarter,
+      'area': area,
+      'contactPerson': contactPerson,
+      'phoneNo': phoneNo,
       'address': address,
-      'specialization': specialization,
+      'attachedDoctor': attachedDoctor,
     };
   }
 
   factory MedicalEntry.fromJson(Map<String, dynamic> json) {
     return MedicalEntry(
       name: json['name'] ?? '',
-      type: json['type'] ?? '',
-      contact: json['contact'] ?? '',
+      headquarter: json['headquarter'] ?? '',
+      area: json['area'] ?? '',
+      contactPerson: json['contactPerson'] ?? '',
+      phoneNo: json['phoneNo'] ?? '',
       address: json['address'] ?? '',
-      specialization: json['specialization'] ?? '',
+      attachedDoctor: json['attachedDoctor'] ?? '',
     );
   }
 
@@ -54,22 +66,26 @@ class MedicalEntry {
     if (identical(this, other)) return true;
     return other is MedicalEntry &&
         other.name == name &&
-        other.type == type &&
-        other.contact == contact &&
+        other.headquarter == headquarter &&
+        other.area == area &&
+        other.contactPerson == contactPerson &&
+        other.phoneNo == phoneNo &&
         other.address == address &&
-        other.specialization == specialization;
+        other.attachedDoctor == attachedDoctor;
   }
 
   @override
   int get hashCode {
     return name.hashCode ^
-        type.hashCode ^
-        contact.hashCode ^
+        headquarter.hashCode ^
+        area.hashCode ^
+        contactPerson.hashCode ^
+        phoneNo.hashCode ^
         address.hashCode ^
-        specialization.hashCode;
+        attachedDoctor.hashCode;
   }
 
   @override
   String toString() =>
-      'MedicalEntry(name: $name, type: $type, contact: $contact, address: $address, specialization: $specialization)';
+      'MedicalEntry(name: $name, headquarter: $headquarter, area: $area, contactPerson: $contactPerson, phoneNo: $phoneNo, address: $address, attachedDoctor: $attachedDoctor)';
 }

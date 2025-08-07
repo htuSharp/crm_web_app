@@ -1,39 +1,39 @@
 class DoctorEntry {
   final String name;
   final String specialty;
-  final String qualification;
-  final String hospital;
-  final String contact;
-  final String address;
   final String area;
+  final DateTime? dateOfBirth;
+  final String phoneNo;
+  final DateTime? marriageAnniversary;
+  final List<String> callDays;
 
   DoctorEntry({
     required this.name,
     required this.specialty,
-    required this.qualification,
-    required this.hospital,
-    required this.contact,
-    required this.address,
     required this.area,
+    this.dateOfBirth,
+    required this.phoneNo,
+    this.marriageAnniversary,
+    required this.callDays,
   });
 
   DoctorEntry copyWith({
     String? name,
     String? specialty,
-    String? qualification,
-    String? hospital,
-    String? contact,
-    String? address,
     String? area,
+    DateTime? dateOfBirth,
+    String? phoneNo,
+    DateTime? marriageAnniversary,
+    List<String>? callDays,
   }) {
     return DoctorEntry(
       name: name ?? this.name,
       specialty: specialty ?? this.specialty,
-      qualification: qualification ?? this.qualification,
-      hospital: hospital ?? this.hospital,
-      contact: contact ?? this.contact,
-      address: address ?? this.address,
       area: area ?? this.area,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      phoneNo: phoneNo ?? this.phoneNo,
+      marriageAnniversary: marriageAnniversary ?? this.marriageAnniversary,
+      callDays: callDays ?? this.callDays,
     );
   }
 
@@ -41,11 +41,11 @@ class DoctorEntry {
     return {
       'name': name,
       'specialty': specialty,
-      'qualification': qualification,
-      'hospital': hospital,
-      'contact': contact,
-      'address': address,
       'area': area,
+      'dateOfBirth': dateOfBirth?.toIso8601String(),
+      'phoneNo': phoneNo,
+      'marriageAnniversary': marriageAnniversary?.toIso8601String(),
+      'callDays': callDays,
     };
   }
 
@@ -53,11 +53,15 @@ class DoctorEntry {
     return DoctorEntry(
       name: json['name'] ?? '',
       specialty: json['specialty'] ?? '',
-      qualification: json['qualification'] ?? '',
-      hospital: json['hospital'] ?? '',
-      contact: json['contact'] ?? '',
-      address: json['address'] ?? '',
       area: json['area'] ?? '',
+      dateOfBirth: json['dateOfBirth'] != null
+          ? DateTime.parse(json['dateOfBirth'])
+          : null,
+      phoneNo: json['phoneNo'] ?? '',
+      marriageAnniversary: json['marriageAnniversary'] != null
+          ? DateTime.parse(json['marriageAnniversary'])
+          : null,
+      callDays: List<String>.from(json['callDays'] ?? []),
     );
   }
 
@@ -67,25 +71,34 @@ class DoctorEntry {
     return other is DoctorEntry &&
         other.name == name &&
         other.specialty == specialty &&
-        other.qualification == qualification &&
-        other.hospital == hospital &&
-        other.contact == contact &&
-        other.address == address &&
-        other.area == area;
+        other.area == area &&
+        other.dateOfBirth == dateOfBirth &&
+        other.phoneNo == phoneNo &&
+        other.marriageAnniversary == marriageAnniversary &&
+        _listEquals(other.callDays, callDays);
+  }
+
+  // Helper method for list equality
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
   int get hashCode {
     return name.hashCode ^
         specialty.hashCode ^
-        qualification.hashCode ^
-        hospital.hashCode ^
-        contact.hashCode ^
-        address.hashCode ^
-        area.hashCode;
+        area.hashCode ^
+        dateOfBirth.hashCode ^
+        phoneNo.hashCode ^
+        marriageAnniversary.hashCode ^
+        callDays.hashCode;
   }
 
   @override
   String toString() =>
-      'DoctorEntry(name: $name, specialty: $specialty, qualification: $qualification, hospital: $hospital, contact: $contact, address: $address, area: $area)';
+      'DoctorEntry(name: $name, specialty: $specialty, area: $area, dateOfBirth: $dateOfBirth, phoneNo: $phoneNo, marriageAnniversary: $marriageAnniversary, callDays: $callDays)';
 }

@@ -700,16 +700,22 @@ class _DataManagementPageState extends State<DataManagementPage>
       return medical.name.toLowerCase().contains(
             _medicalSearchQuery.toLowerCase(),
           ) ||
-          medical.type.toLowerCase().contains(
+          medical.headquarter.toLowerCase().contains(
             _medicalSearchQuery.toLowerCase(),
           ) ||
-          medical.contact.toLowerCase().contains(
+          medical.area.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.contactPerson.toLowerCase().contains(
+            _medicalSearchQuery.toLowerCase(),
+          ) ||
+          medical.phoneNo.toLowerCase().contains(
             _medicalSearchQuery.toLowerCase(),
           ) ||
           medical.address.toLowerCase().contains(
             _medicalSearchQuery.toLowerCase(),
           ) ||
-          medical.specialization.toLowerCase().contains(
+          medical.attachedDoctor.toLowerCase().contains(
             _medicalSearchQuery.toLowerCase(),
           );
     }).toList();
@@ -739,7 +745,7 @@ class _DataManagementPageState extends State<DataManagementPage>
                         });
                       },
                       decoration: InputDecoration(
-                        hintText: 'Search by name, type, contact...',
+                        hintText: 'Search by name, HQ, area, contact...',
                         prefixIcon: const Icon(Icons.search, size: 20),
                         suffixIcon: _medicalSearchQuery.isNotEmpty
                             ? IconButton(
@@ -804,7 +810,7 @@ class _DataManagementPageState extends State<DataManagementPage>
                           leading: const Icon(Icons.local_hospital),
                           title: Text(medical.name),
                           subtitle: Text(
-                            '${medical.type} • ${medical.contact}',
+                            '${medical.contactPerson} • ${medical.phoneNo} • ${medical.area}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -854,16 +860,13 @@ class _DataManagementPageState extends State<DataManagementPage>
       return doctor.name.toLowerCase().contains(
             _doctorSearchQuery.toLowerCase(),
           ) ||
-          doctor.qualification.toLowerCase().contains(
-            _doctorSearchQuery.toLowerCase(),
-          ) ||
           doctor.specialty.toLowerCase().contains(
             _doctorSearchQuery.toLowerCase(),
           ) ||
-          doctor.contact.toLowerCase().contains(
+          doctor.area.toLowerCase().contains(
             _doctorSearchQuery.toLowerCase(),
           ) ||
-          doctor.address.toLowerCase().contains(
+          doctor.phoneNo.toLowerCase().contains(
             _doctorSearchQuery.toLowerCase(),
           );
     }).toList();
@@ -893,7 +896,7 @@ class _DataManagementPageState extends State<DataManagementPage>
                         });
                       },
                       decoration: InputDecoration(
-                        hintText: 'Search by name, qualification, specialty...',
+                        hintText: 'Search by name, specialty, area, phone...',
                         prefixIcon: const Icon(Icons.search, size: 20),
                         suffixIcon: _doctorSearchQuery.isNotEmpty
                             ? IconButton(
@@ -958,7 +961,7 @@ class _DataManagementPageState extends State<DataManagementPage>
                           leading: const Icon(Icons.person),
                           title: Text('Dr. ${doctor.name}'),
                           subtitle: Text(
-                            '${doctor.qualification} • ${doctor.specialty}',
+                            '${doctor.specialty} • ${doctor.area} • ${doctor.phoneNo}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
