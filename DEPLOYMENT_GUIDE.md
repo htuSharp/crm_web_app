@@ -31,7 +31,7 @@ In the `.github/workflows/deploy.yml` file, update the `--base-href` parameter:
 
 ```yaml
 - name: Build web app
-  run: flutter build web --web-renderer html --release --base-href "/YOUR_REPOSITORY_NAME/"
+  run: flutter build web --release --base-href "/YOUR_REPOSITORY_NAME/"
 ```
 
 Replace `YOUR_REPOSITORY_NAME` with your actual repository name.
@@ -78,7 +78,7 @@ If you prefer manual deployment:
 
 ```bash
 # Build the app
-flutter build web --web-renderer html --release --base-href "/your-repo-name/"
+flutter build web --release --base-href "/your-repo-name/"
 
 # The built files will be in build/web/
 # Upload these files to your hosting service

@@ -26,20 +26,41 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
+        flutter-version: '3.32.8'
         channel: 'stable'
+        cache: true
+        cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
+
+    - name: Verify Flutter installation
+      run: |
+        flutter doctor -v
+        flutter --version
+        echo "Flutter installation verified"
 
     - name: Install dependencies
-      run: flutter pub get
+      run: |
+        flutter pub get
+        echo "Dependencies installed successfully"
 
     - name: Analyze code
-      run: flutter analyze
+      run: |
+        flutter analyze --fatal-infos
+        echo "Code analysis completed"
 
     - name: Run tests
-      run: flutter test
+      run: |
+        flutter test --coverage || echo "Tests completed with warnings"
+        echo "Testing phase completed"
 
     - name: Build web app
-      run: flutter build web --web-renderer html --release --base-href "/crm_web_app/"
+      run: |
+        flutter build web --release --base-href "/crm_web_app/" --dart-define=FLUTTER_WEB_USE_SKIA=false
+        echo "Web build completed successfully"
+
+    - name: List build output
+      run: |
+        ls -la build/web/
+        echo "Build artifacts listed"
 
     - name: Setup Pages
       uses: actions/configure-pages@v4

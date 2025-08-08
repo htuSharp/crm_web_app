@@ -110,7 +110,7 @@ class DashboardPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircleAvatar(
-                    backgroundColor: color.withOpacity(0.12),
+                    backgroundColor: color.withValues(alpha: 0.12),
                     radius: 16,
                     child: Icon(
                       item['icon'] as IconData,
