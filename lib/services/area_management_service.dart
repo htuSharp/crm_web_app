@@ -169,6 +169,8 @@ class AreaManagementService {
         ? availableHeadquarters.first
         : null;
 
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -270,6 +272,8 @@ class AreaManagementService {
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
     final availableHeadquarters = _headquartersService.headquartersNames;
     String? selectedHQ = entry.headquarter;
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,

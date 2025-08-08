@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/stockist_entry.dart';
 import '../models/area_entry.dart';
 import '../services/headquarters_management_service.dart';
@@ -529,7 +528,7 @@ class StockistManagementService {
                   );
                 }
 
-                if (result == 'success') {
+                if (result == 'success' && context.mounted) {
                   Navigator.pop(context);
                   onSuccess();
                   if (context.mounted) {
