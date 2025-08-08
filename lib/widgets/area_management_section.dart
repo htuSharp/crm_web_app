@@ -33,7 +33,6 @@ class _AreaManagementSectionState extends State<AreaManagementSection> {
   bool _isGridView = false;
   int _currentPage = 1;
   Timer? _debounce;
-  String? _editingItemId;
 
   @override
   void dispose() {
@@ -558,7 +557,7 @@ class _AreaManagementSectionState extends State<AreaManagementSection> {
                           ),
                         ),
                         Text(
-                          '${totalEntries} area${totalEntries != 1 ? 's' : ''} total',
+                          '$totalEntries area${totalEntries != 1 ? 's' : ''} total',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
@@ -837,7 +836,7 @@ class _AreaManagementSectionState extends State<AreaManagementSection> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 spreadRadius: 1,
                 blurRadius: 3,
                 offset: Offset(0, 2),
@@ -1058,7 +1057,7 @@ class _AreaManagementSectionState extends State<AreaManagementSection> {
                     onTap: () => _showEditAreaDialog(entry),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         );

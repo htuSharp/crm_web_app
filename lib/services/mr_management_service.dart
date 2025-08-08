@@ -599,7 +599,7 @@ class MRManagementService {
                     );
                   }
 
-                  if (result == 'success') {
+                  if (result == 'success' && context.mounted) {
                     Navigator.pop(context);
                     onSuccess();
                     if (context.mounted) {
