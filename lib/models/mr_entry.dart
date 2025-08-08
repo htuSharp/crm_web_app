@@ -7,11 +7,11 @@ class MREntry {
   final String sex;
   final String phoneNo;
   final String address;
-  final String areaName;
+  final List<String> areaNames; // Changed to List for multi-select
   final String accountNumber;
   final String bankName;
   final String ifscCode;
-  final String headquarter;
+  final List<String> headquarters; // Changed to List for multi-select
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -22,11 +22,11 @@ class MREntry {
     required this.sex,
     required this.phoneNo,
     required this.address,
-    required this.areaName,
+    required this.areaNames,
     required this.accountNumber,
     required this.bankName,
     required this.ifscCode,
-    required this.headquarter,
+    required this.headquarters,
     this.createdAt,
     this.updatedAt,
   });
@@ -40,11 +40,11 @@ class MREntry {
       sex: sex,
       phoneNo: phoneNo,
       address: address,
-      areaName: areaName,
+      areaNames: areaNames,
       accountNumber: accountNumber,
       bankName: bankName,
       ifscCode: ifscCode,
-      headquarter: headquarter,
+      headquarters: headquarters,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -57,11 +57,11 @@ class MREntry {
     String? sex,
     String? phoneNo,
     String? address,
-    String? areaName,
+    List<String>? areaNames,
     String? accountNumber,
     String? bankName,
     String? ifscCode,
-    String? headquarter,
+    List<String>? headquarters,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -72,11 +72,11 @@ class MREntry {
       sex: sex ?? this.sex,
       phoneNo: phoneNo ?? this.phoneNo,
       address: address ?? this.address,
-      areaName: areaName ?? this.areaName,
+      areaNames: areaNames ?? this.areaNames,
       accountNumber: accountNumber ?? this.accountNumber,
       bankName: bankName ?? this.bankName,
       ifscCode: ifscCode ?? this.ifscCode,
-      headquarter: headquarter ?? this.headquarter,
+      headquarters: headquarters ?? this.headquarters,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -91,11 +91,11 @@ class MREntry {
       'sex': sex,
       'phone_no': phoneNo,
       'address': address,
-      'area_name': areaName,
+      'area_names': areaNames,
       'account_number': accountNumber,
       'bank_name': bankName,
       'ifsc_code': ifscCode,
-      'headquarter': headquarter,
+      'headquarters': headquarters,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
@@ -109,11 +109,11 @@ class MREntry {
       'sex': sex,
       'phoneNo': phoneNo,
       'address': address,
-      'areaName': areaName,
+      'areaNames': areaNames,
       'accountNumber': accountNumber,
       'bankName': bankName,
       'ifscCode': ifscCode,
-      'headquarter': headquarter,
+      'headquarters': headquarters,
     };
   }
 
@@ -125,11 +125,13 @@ class MREntry {
       sex: json['sex'] ?? '',
       phoneNo: json['phoneNo'] ?? json['phone_no'] ?? '',
       address: json['address'] ?? '',
-      areaName: json['areaName'] ?? json['area_name'] ?? '',
+      areaNames: List<String>.from(
+        json['areaNames'] ?? json['area_names'] ?? [],
+      ),
       accountNumber: json['accountNumber'] ?? json['account_number'] ?? '',
       bankName: json['bankName'] ?? json['bank_name'] ?? '',
       ifscCode: json['ifscCode'] ?? json['ifsc_code'] ?? '',
-      headquarter: json['headquarter'] ?? '',
+      headquarters: List<String>.from(json['headquarters'] ?? []),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

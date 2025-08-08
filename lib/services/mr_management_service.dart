@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/mr_entry.dart';
-import '../constants/data_management_constants.dart';
+// Used in multi-select area filtering logic
 import '../repositories/mr_repository.dart';
+import '../services/headquarters_management_service.dart';
+import '../services/area_management_service.dart';
+import '../widgets/multi_select_dropdown.dart';
 
 class MRManagementService {
   final List<MREntry> _mrList = [];
   final MRRepository _mrRepository = MRRepository();
+  final HeadquartersManagementService _headquartersService =
+      HeadquartersManagementService();
+  final AreaManagementService _areaService = AreaManagementService();
   bool _isLoading = false;
   String? _error;
 
@@ -163,11 +169,11 @@ class MRManagementService {
     required String sex,
     required String phoneNo,
     required String address,
-    required String areaName,
+    required List<String> areaNames,
     required String accountNumber,
     required String bankName,
     required String ifscCode,
-    required String headquarter,
+    required List<String> headquarters,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -182,8 +188,8 @@ class MRManagementService {
     final addressError = validateAddress(address);
     if (addressError != null) return addressError;
 
-    final areaError = validateAreaName(areaName);
-    if (areaError != null) return areaError;
+    if (areaNames.isEmpty) return 'Please select at least one area';
+    if (headquarters.isEmpty) return 'Please select at least one headquarters';
 
     final accountError = validateAccountNumber(accountNumber);
     if (accountError != null) return accountError;
@@ -193,9 +199,6 @@ class MRManagementService {
 
     final ifscError = validateIFSCCode(ifscCode);
     if (ifscError != null) return ifscError;
-
-    final hqError = validateHeadquarter(headquarter);
-    if (hqError != null) return hqError;
 
     final trimmedName = name.trim();
     if (await isDuplicateMR(trimmedName)) {
@@ -209,11 +212,11 @@ class MRManagementService {
         sex: sex,
         phoneNo: phoneNo.trim(),
         address: address.trim(),
-        areaName: areaName.trim(),
+        areaNames: areaNames,
         accountNumber: accountNumber.trim(),
         bankName: bankName.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
-        headquarter: headquarter,
+        headquarters: headquarters,
       ).withGeneratedId();
 
       await _mrRepository.createMR(newMR);
@@ -231,11 +234,11 @@ class MRManagementService {
     required String sex,
     required String phoneNo,
     required String address,
-    required String areaName,
+    required List<String> areaNames,
     required String accountNumber,
     required String bankName,
     required String ifscCode,
-    required String headquarter,
+    required List<String> headquarters,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -250,8 +253,8 @@ class MRManagementService {
     final addressError = validateAddress(address);
     if (addressError != null) return addressError;
 
-    final areaError = validateAreaName(areaName);
-    if (areaError != null) return areaError;
+    if (areaNames.isEmpty) return 'Please select at least one area';
+    if (headquarters.isEmpty) return 'Please select at least one headquarters';
 
     final accountError = validateAccountNumber(accountNumber);
     if (accountError != null) return accountError;
@@ -261,9 +264,6 @@ class MRManagementService {
 
     final ifscError = validateIFSCCode(ifscCode);
     if (ifscError != null) return ifscError;
-
-    final hqError = validateHeadquarter(headquarter);
-    if (hqError != null) return hqError;
 
     final trimmedName = name.trim();
     if (await isDuplicateMR(trimmedName, excluding: oldEntry)) {
@@ -277,11 +277,11 @@ class MRManagementService {
         sex: sex,
         phoneNo: phoneNo.trim(),
         address: address.trim(),
-        areaName: areaName.trim(),
+        areaNames: areaNames,
         accountNumber: accountNumber.trim(),
         bankName: bankName.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
-        headquarter: headquarter,
+        headquarters: headquarters,
       );
 
       await _mrRepository.updateMR(updatedMR);
@@ -323,7 +323,11 @@ class MRManagementService {
     BuildContext context,
     VoidCallback onSuccess,
     MREntry? editEntry,
-  ) {
+  ) async {
+    // Load data from services
+    await _headquartersService.loadHeadquarters();
+    await _areaService.loadAreas();
+
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     // Controllers
@@ -337,9 +341,6 @@ class MRManagementService {
     final addressController = TextEditingController(
       text: editEntry?.address ?? '',
     );
-    final areaController = TextEditingController(
-      text: editEntry?.areaName ?? '',
-    );
     final accountController = TextEditingController(
       text: editEntry?.accountNumber ?? '',
     );
@@ -350,246 +351,285 @@ class MRManagementService {
       text: editEntry?.ifscCode ?? '',
     );
 
+    // Selected values and available options
+    final availableHeadquarters = _headquartersService.headquartersNames;
+    final availableAreas = _areaService.areas;
+
     String selectedSex = editEntry?.sex ?? 'Male';
-    String? selectedHQ =
-        editEntry?.headquarter ??
-        (DataManagementConstants.headquarters.isNotEmpty
-            ? DataManagementConstants.headquarters.first
-            : null);
+    List<String> selectedHeadquarters = editEntry?.headquarters ?? [];
+    List<String> selectedAreas = editEntry?.areaNames ?? [];
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(editEntry == null ? 'Add New MR' : 'Edit MR'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    validator: (value) => validateName(value ?? ''),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: ageController,
-                          decoration: const InputDecoration(
-                            labelText: 'Age *',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.cake),
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          validator: (value) => validateAge(value ?? ''),
-                        ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(editEntry == null ? 'Add New MR' : 'Edit MR'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedSex,
-                          decoration: const InputDecoration(
-                            labelText: 'Gender *',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.wc),
+                      validator: (value) => validateName(value ?? ''),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: ageController,
+                            decoration: const InputDecoration(
+                              labelText: 'Age *',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.cake),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            validator: (value) => validateAge(value ?? ''),
                           ),
-                          items: ['Male', 'Female', 'Other']
-                              .map(
-                                (sex) => DropdownMenuItem(
-                                  value: sex,
-                                  child: Text(sex),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) => selectedSex = val ?? 'Male',
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone Number *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.phone),
-                    ),
-                    keyboardType: TextInputType.phone,
-                    validator: (value) => validatePhoneNumber(value ?? ''),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: addressController,
-                    decoration: const InputDecoration(
-                      labelText: 'Address *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.home),
-                    ),
-                    maxLines: 2,
-                    validator: (value) => validateAddress(value ?? ''),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: areaController,
-                          decoration: const InputDecoration(
-                            labelText: 'Area *',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.location_on),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedSex,
+                            decoration: const InputDecoration(
+                              labelText: 'Gender *',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.wc),
+                            ),
+                            items: ['Male', 'Female', 'Other']
+                                .map(
+                                  (sex) => DropdownMenuItem(
+                                    value: sex,
+                                    child: Text(sex),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) => selectedSex = val ?? 'Male',
                           ),
-                          validator: (value) => validateAreaName(value ?? ''),
-                          textCapitalization: TextCapitalization.words,
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: selectedHQ,
-                          decoration: const InputDecoration(
-                            labelText: 'Headquarter *',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.business),
-                          ),
-                          items: DataManagementConstants.headquarters
-                              .map(
-                                (hq) => DropdownMenuItem(
-                                  value: hq,
-                                  child: Text(hq),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) => selectedHQ = val,
-                          validator: (value) => validateHeadquarter(value),
-                        ),
+                      keyboardType: TextInputType.phone,
+                      validator: (value) => validatePhoneNumber(value ?? ''),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Address *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.home),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const Text(
-                    'Banking Details',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: accountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Account Number *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.account_balance),
+                      maxLines: 2,
+                      validator: (value) => validateAddress(value ?? ''),
+                      textCapitalization: TextCapitalization.words,
                     ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (value) => validateAccountNumber(value ?? ''),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: bankController,
-                    decoration: const InputDecoration(
-                      labelText: 'Bank Name *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.account_balance),
+                    const SizedBox(height: 16),
+
+                    // Headquarters multi-select
+                    MultiSelectDropdown<String>(
+                      items: availableHeadquarters,
+                      selectedItems: selectedHeadquarters,
+                      onSelectionChanged: (selected) {
+                        setState(() {
+                          selectedHeadquarters = selected;
+                          // Filter areas based on selected headquarters
+                          selectedAreas = selectedAreas.where((area) {
+                            return availableAreas.any(
+                              (areaEntry) =>
+                                  areaEntry.area == area &&
+                                  selectedHeadquarters.contains(
+                                    areaEntry.headquarter,
+                                  ),
+                            );
+                          }).toList();
+                        });
+                      },
+                      displayText: (hq) => hq,
+                      labelText: 'Headquarters',
+                      hintText: 'Select headquarters',
+                      prefixIcon: Icons.business,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select at least one headquarters';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) => validateBankName(value ?? ''),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: ifscController,
-                    decoration: const InputDecoration(
-                      labelText: 'IFSC Code *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.code),
-                      hintText: 'e.g., SBIN0123456',
+                    const SizedBox(height: 16),
+
+                    // Areas multi-select
+                    MultiSelectDropdown<String>(
+                      items: selectedHeadquarters.isEmpty
+                          ? []
+                          : availableAreas
+                                .where(
+                                  (area) => selectedHeadquarters.contains(
+                                    area.headquarter,
+                                  ),
+                                )
+                                .map((area) => area.area)
+                                .toList(),
+                      selectedItems: selectedAreas,
+                      onSelectionChanged: (selected) {
+                        setState(() {
+                          selectedAreas = selected;
+                        });
+                      },
+                      displayText: (area) => area,
+                      labelText: 'Areas',
+                      hintText: selectedHeadquarters.isEmpty
+                          ? 'Select headquarters first'
+                          : 'Select areas',
+                      prefixIcon: Icons.location_on,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select at least one area';
+                        }
+                        return null;
+                      },
                     ),
-                    textCapitalization: TextCapitalization.characters,
-                    validator: (value) => validateIFSCCode(value ?? ''),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const Text(
+                      'Banking Details',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: accountController,
+                      decoration: const InputDecoration(
+                        labelText: 'Account Number *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.account_balance),
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: (value) => validateAccountNumber(value ?? ''),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: bankController,
+                      decoration: const InputDecoration(
+                        labelText: 'Bank Name *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.account_balance),
+                      ),
+                      validator: (value) => validateBankName(value ?? ''),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: ifscController,
+                      decoration: const InputDecoration(
+                        labelText: 'IFSC Code *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.code),
+                        hintText: 'e.g., SBIN0123456',
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                      validator: (value) => validateIFSCCode(value ?? ''),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate() && selectedHQ != null) {
-                String result;
-                if (editEntry == null) {
-                  result = await addMR(
-                    name: nameController.text,
-                    age: ageController.text,
-                    sex: selectedSex,
-                    phoneNo: phoneController.text,
-                    address: addressController.text,
-                    areaName: areaController.text,
-                    accountNumber: accountController.text,
-                    bankName: bankController.text,
-                    ifscCode: ifscController.text,
-                    headquarter: selectedHQ!,
-                  );
-                } else {
-                  result = await editMR(
-                    oldEntry: editEntry,
-                    name: nameController.text,
-                    age: ageController.text,
-                    sex: selectedSex,
-                    phoneNo: phoneController.text,
-                    address: addressController.text,
-                    areaName: areaController.text,
-                    accountNumber: accountController.text,
-                    bankName: bankController.text,
-                    ifscCode: ifscController.text,
-                    headquarter: selectedHQ!,
-                  );
-                }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate() &&
+                    selectedHeadquarters.isNotEmpty &&
+                    selectedAreas.isNotEmpty) {
+                  String result;
+                  if (editEntry == null) {
+                    result = await addMR(
+                      name: nameController.text,
+                      age: ageController.text,
+                      sex: selectedSex,
+                      phoneNo: phoneController.text,
+                      address: addressController.text,
+                      areaNames: selectedAreas,
+                      accountNumber: accountController.text,
+                      bankName: bankController.text,
+                      ifscCode: ifscController.text,
+                      headquarters: selectedHeadquarters,
+                    );
+                  } else {
+                    result = await editMR(
+                      oldEntry: editEntry,
+                      name: nameController.text,
+                      age: ageController.text,
+                      sex: selectedSex,
+                      phoneNo: phoneController.text,
+                      address: addressController.text,
+                      areaNames: selectedAreas,
+                      accountNumber: accountController.text,
+                      bankName: bankController.text,
+                      ifscCode: ifscController.text,
+                      headquarters: selectedHeadquarters,
+                    );
+                  }
 
-                if (result == 'success') {
-                  Navigator.pop(context);
-                  onSuccess();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        editEntry == null
-                            ? 'MR added successfully!'
-                            : 'MR updated successfully!',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  if (result == 'success') {
+                    Navigator.pop(context);
+                    onSuccess();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            editEntry == null
+                                ? 'MR added successfully!'
+                                : 'MR updated successfully!',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 }
-              }
-            },
-            child: Text(editEntry == null ? 'Add' : 'Update'),
-          ),
-        ],
+              },
+              child: Text(editEntry == null ? 'Add' : 'Update'),
+            ),
+          ],
+        ),
       ),
     );
   }

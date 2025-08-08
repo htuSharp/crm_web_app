@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/medical_entry.dart';
 import '../services/headquarters_management_service.dart';
 import '../services/area_management_service.dart';
@@ -278,7 +279,12 @@ class MedicalManagementService {
     BuildContext context,
     VoidCallback onSuccess,
     MedicalEntry? editEntry,
-  ) {
+  ) async {
+    // Load data from services
+    await _headquartersService.loadHeadquarters();
+    await _areaService.loadAreas();
+    await _doctorService.loadDoctors();
+
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     // Controllers
@@ -363,6 +369,8 @@ class MedicalManagementService {
                                 selectedHeadquarter = val;
                                 selectedArea =
                                     null; // Reset area when headquarter changes
+                                selectedDoctor =
+                                    null; // Reset doctor when headquarter changes
                               });
                             },
                       validator: (value) => validateHeadquarter(value),
@@ -460,14 +468,18 @@ class MedicalManagementService {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.medical_services),
                       ),
-                      items: availableDoctors.isEmpty
+                      items: selectedHeadquarter == null
                           ? [
                               const DropdownMenuItem(
                                 value: null,
-                                child: Text('No doctors available'),
+                                child: Text('Select headquarter first'),
                               ),
                             ]
                           : availableDoctors
+                                .where(
+                                  (doctor) =>
+                                      doctor.headquarter == selectedHeadquarter,
+                                )
                                 .map(
                                   (doctor) => DropdownMenuItem(
                                     value: doctor.name,
@@ -477,7 +489,7 @@ class MedicalManagementService {
                                   ),
                                 )
                                 .toList(),
-                      onChanged: availableDoctors.isEmpty
+                      onChanged: selectedHeadquarter == null
                           ? null
                           : (val) {
                               setState(() {
@@ -526,23 +538,27 @@ class MedicalManagementService {
                   if (result == 'success') {
                     Navigator.pop(context);
                     onSuccess();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          editEntry == null
-                              ? 'Medical facility added successfully!'
-                              : 'Medical facility updated successfully!',
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            editEntry == null
+                                ? 'Medical facility added successfully!'
+                                : 'Medical facility updated successfully!',
+                          ),
+                          backgroundColor: Colors.green,
                         ),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                      );
+                    }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 }
               },

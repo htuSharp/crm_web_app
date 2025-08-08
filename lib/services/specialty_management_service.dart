@@ -266,20 +266,27 @@ class SpecialtyManagementService {
               if (result == 'success') {
                 Navigator.pop(context);
                 onSuccess();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      editSpecialty == null
-                          ? 'Medical specialty added successfully!'
-                          : 'Medical specialty updated successfully!',
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        editSpecialty == null
+                            ? 'Medical specialty added successfully!'
+                            : 'Medical specialty updated successfully!',
+                      ),
+                      backgroundColor: Colors.green,
                     ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                  );
+                }
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(result), backgroundColor: Colors.red),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: Text(editSpecialty == null ? 'Add' : 'Update'),

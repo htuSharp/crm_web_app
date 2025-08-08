@@ -274,20 +274,27 @@ class HeadquartersManagementService {
               if (result == 'success') {
                 Navigator.pop(context);
                 onSuccess();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      editHeadquarters == null
-                          ? 'Headquarters added successfully!'
-                          : 'Headquarters updated successfully!',
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        editHeadquarters == null
+                            ? 'Headquarters added successfully!'
+                            : 'Headquarters updated successfully!',
+                      ),
+                      backgroundColor: Colors.green,
                     ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                  );
+                }
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(result), backgroundColor: Colors.red),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: Text(editHeadquarters == null ? 'Add' : 'Update'),
