@@ -7,6 +7,7 @@ class StockistEntry {
   final String contact;
   final String address;
   final String area;
+  final String headquarter;
   final String licenseNumber;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -18,6 +19,7 @@ class StockistEntry {
     required this.contact,
     required this.address,
     required this.area,
+    required this.headquarter,
     required this.licenseNumber,
     this.createdAt,
     this.updatedAt,
@@ -32,6 +34,7 @@ class StockistEntry {
       contact: contact,
       address: address,
       area: area,
+      headquarter: headquarter,
       licenseNumber: licenseNumber,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -45,6 +48,7 @@ class StockistEntry {
     String? contact,
     String? address,
     String? area,
+    String? headquarter,
     String? licenseNumber,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -56,6 +60,7 @@ class StockistEntry {
       contact: contact ?? this.contact,
       address: address ?? this.address,
       area: area ?? this.area,
+      headquarter: headquarter ?? this.headquarter,
       licenseNumber: licenseNumber ?? this.licenseNumber,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
@@ -71,6 +76,7 @@ class StockistEntry {
       'contact': contact,
       'address': address,
       'area': area,
+      'headquarter': headquarter,
       'license_number': licenseNumber,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
@@ -85,6 +91,7 @@ class StockistEntry {
       'contact': contact,
       'address': address,
       'area': area,
+      'headquarter': headquarter,
       'licenseNumber': licenseNumber,
     };
   }
@@ -97,6 +104,7 @@ class StockistEntry {
       contact: json['contact'] ?? '',
       address: json['address'] ?? '',
       area: json['area'] ?? '',
+      headquarter: json['headquarter'] ?? '',
       licenseNumber: json['licenseNumber'] ?? json['license_number'] ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])

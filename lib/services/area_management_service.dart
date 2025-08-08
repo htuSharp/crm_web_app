@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/area_entry.dart';
-import '../constants/data_management_constants.dart';
 import '../repositories/area_repository.dart';
+import '../services/headquarters_management_service.dart';
 
 class AreaManagementService {
   final List<AreaEntry> _areas = [];
   final AreaRepository _areaRepository = AreaRepository();
+  final HeadquartersManagementService _headquartersService =
+      HeadquartersManagementService();
   bool _isLoading = false;
   String? _error;
 
@@ -156,11 +158,15 @@ class AreaManagementService {
   }
 
   // Dialog helper method
-  void showAddAreaDialog(BuildContext context, VoidCallback onSuccess) {
+  void showAddAreaDialog(BuildContext context, VoidCallback onSuccess) async {
+    // Load headquarters from database
+    await _headquartersService.loadHeadquarters();
+
     final TextEditingController areaController = TextEditingController();
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-    String? selectedHQ = DataManagementConstants.headquarters.isNotEmpty
-        ? DataManagementConstants.headquarters.first
+    final availableHeadquarters = _headquartersService.headquartersNames;
+    String? selectedHQ = availableHeadquarters.isNotEmpty
+        ? availableHeadquarters.first
         : null;
 
     showDialog(
@@ -178,10 +184,24 @@ class AreaManagementService {
                   labelText: 'Headquarter',
                   border: OutlineInputBorder(),
                 ),
-                items: DataManagementConstants.headquarters
-                    .map((hq) => DropdownMenuItem(value: hq, child: Text(hq)))
-                    .toList(),
-                onChanged: (val) => selectedHQ = val,
+                items: availableHeadquarters.isEmpty
+                    ? [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('No headquarters available'),
+                        ),
+                      ]
+                    : availableHeadquarters
+                          .map(
+                            (hq) => DropdownMenuItem<String>(
+                              value: hq,
+                              child: Text(hq),
+                            ),
+                          )
+                          .toList(),
+                onChanged: availableHeadquarters.isEmpty
+                    ? null
+                    : (val) => selectedHQ = val,
                 validator: (value) => validateHeadquarter(value),
               ),
               const SizedBox(height: 16),
@@ -209,19 +229,23 @@ class AreaManagementService {
                 if (result == 'success') {
                   Navigator.pop(context);
                   onSuccess();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Area added successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Area added successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               }
             },
@@ -236,11 +260,15 @@ class AreaManagementService {
     BuildContext context,
     AreaEntry entry,
     VoidCallback onSuccess,
-  ) {
+  ) async {
+    // Load headquarters from database
+    await _headquartersService.loadHeadquarters();
+
     final TextEditingController areaController = TextEditingController(
       text: entry.area,
     );
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final availableHeadquarters = _headquartersService.headquartersNames;
     String? selectedHQ = entry.headquarter;
 
     showDialog(
@@ -258,10 +286,24 @@ class AreaManagementService {
                   labelText: 'Headquarter',
                   border: OutlineInputBorder(),
                 ),
-                items: DataManagementConstants.headquarters
-                    .map((hq) => DropdownMenuItem(value: hq, child: Text(hq)))
-                    .toList(),
-                onChanged: (val) => selectedHQ = val,
+                items: availableHeadquarters.isEmpty
+                    ? [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('No headquarters available'),
+                        ),
+                      ]
+                    : availableHeadquarters
+                          .map(
+                            (hq) => DropdownMenuItem<String>(
+                              value: hq,
+                              child: Text(hq),
+                            ),
+                          )
+                          .toList(),
+                onChanged: availableHeadquarters.isEmpty
+                    ? null
+                    : (val) => selectedHQ = val,
                 validator: (value) => validateHeadquarter(value),
               ),
               const SizedBox(height: 16),
@@ -293,19 +335,23 @@ class AreaManagementService {
                 if (result == 'success') {
                   Navigator.pop(context);
                   onSuccess();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Area updated successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Area updated successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               }
             },

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/stockist_entry.dart';
+import '../models/area_entry.dart';
+import '../services/headquarters_management_service.dart';
+import '../services/area_management_service.dart';
 import '../repositories/stockist_repository.dart';
 
 class StockistManagementService {
@@ -8,6 +11,11 @@ class StockistManagementService {
   final StockistRepository _stockistRepository = StockistRepository();
   bool _isLoading = false;
   String? _error;
+
+  // Dependencies for dropdowns
+  final HeadquartersManagementService _headquartersService =
+      HeadquartersManagementService();
+  final AreaManagementService _areaService = AreaManagementService();
 
   List<StockistEntry> get stockistList => List.unmodifiable(_stockistList);
   bool get isLoading => _isLoading;
@@ -160,6 +168,7 @@ class StockistManagementService {
     required String contact,
     required String address,
     required String area,
+    required String headquarter,
     required String licenseNumber,
   }) async {
     // Validate all fields
@@ -199,6 +208,7 @@ class StockistManagementService {
         contact: contact.trim(),
         address: address.trim(),
         area: area.trim(),
+        headquarter: headquarter,
         licenseNumber: trimmedLicense,
       );
 
@@ -217,6 +227,7 @@ class StockistManagementService {
     required String contact,
     required String address,
     required String area,
+    required String headquarter,
     required String licenseNumber,
   }) async {
     // Validate all fields
@@ -256,6 +267,7 @@ class StockistManagementService {
         contact: contact.trim(),
         address: address.trim(),
         area: area.trim(),
+        headquarter: headquarter,
         licenseNumber: trimmedLicense,
       );
 
@@ -298,7 +310,11 @@ class StockistManagementService {
     BuildContext context,
     VoidCallback onSuccess,
     StockistEntry? editEntry,
-  ) {
+  ) async {
+    // Load data from services
+    await _headquartersService.loadHeadquarters();
+    await _areaService.loadAreas();
+
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     // Controllers
@@ -312,10 +328,16 @@ class StockistManagementService {
     final addressController = TextEditingController(
       text: editEntry?.address ?? '',
     );
-    final areaController = TextEditingController(text: editEntry?.area ?? '');
     final licenseController = TextEditingController(
       text: editEntry?.licenseNumber ?? '',
     );
+
+    // Selected values and available options
+    final availableHeadquarters = _headquartersService.headquartersNames;
+    final availableAreas = _areaService.areas;
+
+    String? selectedHeadquarter = editEntry?.headquarter;
+    String? selectedArea = editEntry?.area;
 
     showDialog(
       context: context,
@@ -362,15 +384,81 @@ class StockistManagementService {
                     validator: (value) => validateContact(value ?? ''),
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: areaController,
-                    decoration: const InputDecoration(
-                      labelText: 'Service Area *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.location_on),
-                    ),
-                    validator: (value) => validateArea(value ?? ''),
-                    textCapitalization: TextCapitalization.words,
+
+                  // Headquarters dropdown
+                  StatefulBuilder(
+                    builder: (context, setState) {
+                      return DropdownButtonFormField<String>(
+                        value: selectedHeadquarter,
+                        decoration: const InputDecoration(
+                          labelText: 'Headquarters',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.business),
+                        ),
+                        items: availableHeadquarters.map((hq) {
+                          return DropdownMenuItem<String>(
+                            value: hq,
+                            child: Text(hq),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedHeadquarter = value;
+                            selectedArea =
+                                null; // Reset area when headquarters changes
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select headquarters';
+                          }
+                          return null;
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Area dropdown
+                  StatefulBuilder(
+                    builder: (context, setState) {
+                      final filteredAreas = selectedHeadquarter != null
+                          ? availableAreas
+                                .where(
+                                  (area) =>
+                                      area.headquarter == selectedHeadquarter,
+                                )
+                                .toList()
+                          : <AreaEntry>[];
+
+                      return DropdownButtonFormField<String>(
+                        value: selectedArea,
+                        decoration: const InputDecoration(
+                          labelText: 'Service Area *',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.location_on),
+                        ),
+                        items: filteredAreas.map((area) {
+                          return DropdownMenuItem<String>(
+                            value: area.area,
+                            child: Text(area.area),
+                          );
+                        }).toList(),
+                        onChanged: selectedHeadquarter != null
+                            ? (value) {
+                                setState(() {
+                                  selectedArea = value;
+                                });
+                              }
+                            : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select service area';
+                          }
+                          return null;
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -414,7 +502,9 @@ class StockistManagementService {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (formKey.currentState!.validate()) {
+              if (formKey.currentState!.validate() &&
+                  selectedHeadquarter != null &&
+                  selectedArea != null) {
                 String result;
                 if (editEntry == null) {
                   result = await addStockist(
@@ -422,7 +512,8 @@ class StockistManagementService {
                     company: companyController.text,
                     contact: contactController.text,
                     address: addressController.text,
-                    area: areaController.text,
+                    area: selectedArea!,
+                    headquarter: selectedHeadquarter!,
                     licenseNumber: licenseController.text,
                   );
                 } else {
@@ -432,7 +523,8 @@ class StockistManagementService {
                     company: companyController.text,
                     contact: contactController.text,
                     address: addressController.text,
-                    area: areaController.text,
+                    area: selectedArea!,
+                    headquarter: selectedHeadquarter!,
                     licenseNumber: licenseController.text,
                   );
                 }
@@ -440,23 +532,27 @@ class StockistManagementService {
                 if (result == 'success') {
                   Navigator.pop(context);
                   onSuccess();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        editEntry == null
-                            ? 'Stockist added successfully!'
-                            : 'Stockist updated successfully!',
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          editEntry == null
+                              ? 'Stockist added successfully!'
+                              : 'Stockist updated successfully!',
+                        ),
+                        backgroundColor: Colors.green,
                       ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                    );
+                  }
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               }
             },
