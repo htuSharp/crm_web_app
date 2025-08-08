@@ -359,6 +359,8 @@ class MRManagementService {
     List<String> selectedHeadquarters = editEntry?.headquarters ?? [];
     List<String> selectedAreas = editEntry?.areaNames ?? [];
 
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
