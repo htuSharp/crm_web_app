@@ -93,7 +93,7 @@ class DashboardPage extends StatelessWidget {
           crossAxisCount: 4,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
-          childAspectRatio: 1.3,
+          childAspectRatio: 1.4,
         ),
         itemBuilder: (context, index) {
           final item = dashboardItems[index];
@@ -105,47 +105,52 @@ class DashboardPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(6.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   CircleAvatar(
                     backgroundColor: color.withValues(alpha: 0.12),
-                    radius: 16,
+                    radius: 14,
                     child: Icon(
                       item['icon'] as IconData,
-                      size: 18,
+                      size: 16,
                       color: color,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     item['title'] as String,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         getTrendIcon(trend),
                         color: getTrendColor(trend, color),
-                        size: 14,
+                        size: 12,
                       ),
-                      const SizedBox(width: 3),
+                      const SizedBox(width: 2),
                       Flexible(
                         child: Text(
                           item['value'] as String,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: getTrendColor(trend, color),
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
