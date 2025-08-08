@@ -228,7 +228,7 @@ class AreaManagementService {
             onPressed: () async {
               if (formKey.currentState!.validate() && selectedHQ != null) {
                 final result = await addArea(areaController.text, selectedHQ!);
-                if (result == 'success') {
+                if (result == 'success' && context.mounted) {
                   Navigator.pop(context);
                   onSuccess();
                   if (context.mounted) {
@@ -336,7 +336,7 @@ class AreaManagementService {
                   areaController.text,
                   selectedHQ!,
                 );
-                if (result == 'success') {
+                if (result == 'success' && context.mounted) {
                   Navigator.pop(context);
                   onSuccess();
                   if (context.mounted) {

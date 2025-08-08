@@ -309,6 +309,8 @@ class MedicalManagementService {
     final availableAreas = _areaService.areas;
     final availableDoctors = _doctorService.doctorsList;
 
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
