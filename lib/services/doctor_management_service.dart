@@ -273,6 +273,8 @@ class DoctorManagementService {
     await _headquartersService.loadHeadquarters();
     await _areaService.loadAreas();
 
+    if (!context.mounted) return;
+
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     // Controllers

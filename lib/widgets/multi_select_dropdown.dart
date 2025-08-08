@@ -11,7 +11,7 @@ class MultiSelectDropdown<T> extends StatefulWidget {
   final String? Function(List<T>?)? validator;
 
   const MultiSelectDropdown({
-    Key? key,
+    super.key,
     required this.items,
     required this.selectedItems,
     required this.onSelectionChanged,
@@ -20,7 +20,7 @@ class MultiSelectDropdown<T> extends StatefulWidget {
     required this.hintText,
     this.prefixIcon,
     this.validator,
-  }) : super(key: key);
+  });
 
   @override
   State<MultiSelectDropdown<T>> createState() => _MultiSelectDropdownState<T>();
