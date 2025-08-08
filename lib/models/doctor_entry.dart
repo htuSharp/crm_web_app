@@ -5,6 +5,7 @@ class DoctorEntry {
   final String name;
   final String specialty;
   final String area;
+  final String headquarter; // Added headquarter field
   final DateTime? dateOfBirth;
   final String phoneNo;
   final DateTime? marriageAnniversary;
@@ -17,6 +18,7 @@ class DoctorEntry {
     required this.name,
     required this.specialty,
     required this.area,
+    required this.headquarter,
     this.dateOfBirth,
     required this.phoneNo,
     this.marriageAnniversary,
@@ -32,6 +34,7 @@ class DoctorEntry {
     String? name,
     String? specialty,
     String? area,
+    String? headquarter,
     DateTime? dateOfBirth,
     String? phoneNo,
     DateTime? marriageAnniversary,
@@ -44,6 +47,7 @@ class DoctorEntry {
       name: name ?? this.name,
       specialty: specialty ?? this.specialty,
       area: area ?? this.area,
+      headquarter: headquarter ?? this.headquarter,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       phoneNo: phoneNo ?? this.phoneNo,
       marriageAnniversary: marriageAnniversary ?? this.marriageAnniversary,
@@ -59,6 +63,7 @@ class DoctorEntry {
       'name': name,
       'specialty': specialty,
       'area': area,
+      'headquarter': headquarter,
       'date_of_birth': dateOfBirth?.toIso8601String(),
       'phone_no': phoneNo,
       'marriage_anniversary': marriageAnniversary?.toIso8601String(),
@@ -83,6 +88,7 @@ class DoctorEntry {
       name: json['name'] ?? '',
       specialty: json['specialty'] ?? '',
       area: json['area'] ?? '',
+      headquarter: json['headquarter'] ?? '',
       dateOfBirth: json['date_of_birth'] != null
           ? DateTime.parse(json['date_of_birth'])
           : null,

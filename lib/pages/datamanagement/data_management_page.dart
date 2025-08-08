@@ -605,8 +605,12 @@ class _DataManagementPageState extends State<DataManagementPage>
     final filteredMRs = _mrService.mrList.where((mr) {
       return mr.name.toLowerCase().contains(_mrSearchQuery.toLowerCase()) ||
           mr.phoneNo.toLowerCase().contains(_mrSearchQuery.toLowerCase()) ||
-          mr.areaName.toLowerCase().contains(_mrSearchQuery.toLowerCase()) ||
-          mr.headquarter.toLowerCase().contains(_mrSearchQuery.toLowerCase());
+          mr.areaNames.any(
+            (area) => area.toLowerCase().contains(_mrSearchQuery.toLowerCase()),
+          ) ||
+          mr.headquarters.any(
+            (hq) => hq.toLowerCase().contains(_mrSearchQuery.toLowerCase()),
+          );
     }).toList();
 
     return Expanded(
@@ -698,10 +702,19 @@ class _DataManagementPageState extends State<DataManagementPage>
                         child: ListTile(
                           leading: const Icon(Icons.person_outline),
                           title: Text(mr.name),
-                          subtitle: Text('${mr.phoneNo} • ${mr.areaName}'),
+                          subtitle: Text(
+                            '${mr.phoneNo} • ${mr.areaNames.join(", ")}',
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.green,
+                                ),
+                                onPressed: () => _showMRViewDialog(context, mr),
+                              ),
                               IconButton(
                                 icon: const Icon(
                                   Icons.edit,
@@ -861,6 +874,14 @@ class _DataManagementPageState extends State<DataManagementPage>
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.green,
+                                ),
+                                onPressed: () =>
+                                    _showMedicalViewDialog(context, medical),
+                              ),
                               IconButton(
                                 icon: const Icon(
                                   Icons.edit,
@@ -1068,6 +1089,14 @@ class _DataManagementPageState extends State<DataManagementPage>
                             children: [
                               IconButton(
                                 icon: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.green,
+                                ),
+                                onPressed: () =>
+                                    _showDoctorViewDialog(context, doctor),
+                              ),
+                              IconButton(
+                                icon: const Icon(
                                   Icons.edit,
                                   color: Colors.blue,
                                 ),
@@ -1225,6 +1254,14 @@ class _DataManagementPageState extends State<DataManagementPage>
                             children: [
                               IconButton(
                                 icon: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.green,
+                                ),
+                                onPressed: () =>
+                                    _showStockistViewDialog(context, stockist),
+                              ),
+                              IconButton(
+                                icon: const Icon(
                                   Icons.edit,
                                   color: Colors.blue,
                                 ),
@@ -1287,23 +1324,228 @@ class _DataManagementPageState extends State<DataManagementPage>
               Navigator.pop(context);
               try {
                 await onConfirm();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('$itemName deleted successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$itemName deleted successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to delete $itemName: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete $itemName: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // View Dialog Methods
+  void _showMRViewDialog(BuildContext context, mr) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.person_outline, color: Colors.purple),
+            const SizedBox(width: 8),
+            const Text('MR Details'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Name', mr.name),
+                _buildDetailRow('Age', '${mr.age} years'),
+                _buildDetailRow('Sex', mr.sex),
+                _buildDetailRow('Phone', mr.phoneNo),
+                _buildDetailRow('Address', mr.address),
+                _buildDetailRow('Headquarters', mr.headquarters.join(', ')),
+                _buildDetailRow('Areas', mr.areaNames.join(', ')),
+                const Divider(),
+                const Text(
+                  'Banking Details',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                _buildDetailRow('Account Number', mr.accountNumber),
+                _buildDetailRow('Bank Name', mr.bankName),
+                _buildDetailRow('IFSC Code', mr.ifscCode),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMedicalViewDialog(BuildContext context, medical) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.local_hospital, color: Colors.red),
+            const SizedBox(width: 8),
+            const Text('Medical Facility Details'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Name', medical.name),
+                _buildDetailRow('Headquarters', medical.headquarter),
+                _buildDetailRow('Area', medical.area),
+                _buildDetailRow('Contact Person', medical.contactPerson),
+                _buildDetailRow('Phone', medical.phoneNo),
+                _buildDetailRow('Address', medical.address),
+                _buildDetailRow('Attached Doctor', medical.attachedDoctor),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDoctorViewDialog(BuildContext context, doctor) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.person, color: Colors.teal),
+            const SizedBox(width: 8),
+            const Text('Doctor Details'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Name', 'Dr. ${doctor.name}'),
+                _buildDetailRow('Specialty', doctor.specialty),
+                _buildDetailRow('Headquarters', doctor.headquarter),
+                _buildDetailRow('Area', doctor.area),
+                _buildDetailRow('Phone', doctor.phoneNo),
+                if (doctor.dateOfBirth != null)
+                  _buildDetailRow('Date of Birth', '${doctor.dateOfBirth}'),
+                if (doctor.marriageAnniversary != null)
+                  _buildDetailRow(
+                    'Marriage Anniversary',
+                    '${doctor.marriageAnniversary}',
+                  ),
+                if (doctor.callDays.isNotEmpty)
+                  _buildDetailRow('Call Days', doctor.callDays.join(', ')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStockistViewDialog(BuildContext context, stockist) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.business, color: Colors.indigo),
+            const SizedBox(width: 8),
+            const Text('Stockist Details'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Name', stockist.name),
+                _buildDetailRow('Company', stockist.company),
+                _buildDetailRow('Headquarters', stockist.headquarter),
+                _buildDetailRow('Area', stockist.area),
+                _buildDetailRow('Contact', stockist.contact),
+                _buildDetailRow('Address', stockist.address),
+                if (stockist.licenseNumber.isNotEmpty)
+                  _buildDetailRow('License Number', stockist.licenseNumber),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isNotEmpty ? value : 'Not provided',
+              style: TextStyle(
+                color: value.isNotEmpty ? null : Colors.grey,
+                fontStyle: value.isNotEmpty ? null : FontStyle.italic,
+              ),
+            ),
           ),
         ],
       ),

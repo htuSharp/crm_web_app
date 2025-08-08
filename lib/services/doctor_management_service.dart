@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/doctor_entry.dart';
 import '../constants/data_management_constants.dart';
 import '../services/area_management_service.dart';
+import '../services/headquarters_management_service.dart';
 import '../repositories/doctor_repository.dart';
 
 class DoctorManagementService {
@@ -16,6 +18,8 @@ class DoctorManagementService {
 
   // Dependencies for dropdowns
   final AreaManagementService _areaService = AreaManagementService();
+  final HeadquartersManagementService _headquartersService =
+      HeadquartersManagementService();
 
   // Load doctors from Supabase
   Future<void> loadDoctors() async {
@@ -134,6 +138,7 @@ class DoctorManagementService {
     required String name,
     required String specialty,
     required String area,
+    required String headquarter,
     DateTime? dateOfBirth,
     required String phoneNo,
     DateTime? marriageAnniversary,
@@ -165,6 +170,7 @@ class DoctorManagementService {
         name: trimmedName,
         specialty: specialty,
         area: area,
+        headquarter: headquarter,
         dateOfBirth: dateOfBirth,
         phoneNo: phoneNo.trim(),
         marriageAnniversary: marriageAnniversary,
@@ -184,6 +190,7 @@ class DoctorManagementService {
     required String name,
     required String specialty,
     required String area,
+    required String headquarter,
     DateTime? dateOfBirth,
     required String phoneNo,
     DateTime? marriageAnniversary,
@@ -215,6 +222,7 @@ class DoctorManagementService {
         name: trimmedName,
         specialty: specialty,
         area: area,
+        headquarter: headquarter,
         dateOfBirth: dateOfBirth,
         phoneNo: phoneNo.trim(),
         marriageAnniversary: marriageAnniversary,
@@ -260,7 +268,11 @@ class DoctorManagementService {
     BuildContext context,
     VoidCallback onSuccess,
     DoctorEntry? editEntry,
-  ) {
+  ) async {
+    // Load data from services
+    await _headquartersService.loadHeadquarters();
+    await _areaService.loadAreas();
+
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
     // Controllers
@@ -271,6 +283,7 @@ class DoctorManagementService {
 
     // Selected values
     String? selectedSpecialty = editEntry?.specialty;
+    String? selectedHeadquarter = editEntry?.headquarter;
     String? selectedArea = editEntry?.area;
     DateTime? selectedDateOfBirth = editEntry?.dateOfBirth;
     DateTime? selectedMarriageAnniversary = editEntry?.marriageAnniversary;
@@ -280,6 +293,7 @@ class DoctorManagementService {
 
     // Get available options
     final availableSpecialties = DataManagementConstants.specialties;
+    final availableHeadquarters = _headquartersService.headquartersNames;
     final availableAreas = _areaService.areas;
 
     showDialog(
@@ -343,6 +357,44 @@ class DoctorManagementService {
                     ),
                     const SizedBox(height: 16),
 
+                    // Headquarters dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedHeadquarter,
+                      decoration: const InputDecoration(
+                        labelText: 'Headquarter *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.business),
+                      ),
+                      items: availableHeadquarters.isEmpty
+                          ? [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('No headquarters available'),
+                              ),
+                            ]
+                          : availableHeadquarters
+                                .map(
+                                  (hq) => DropdownMenuItem(
+                                    value: hq,
+                                    child: Text(hq),
+                                  ),
+                                )
+                                .toList(),
+                      onChanged: availableHeadquarters.isEmpty
+                          ? null
+                          : (val) {
+                              setState(() {
+                                selectedHeadquarter = val;
+                                selectedArea =
+                                    null; // Reset area when headquarter changes
+                              });
+                            },
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Please select a headquarter'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+
                     // Area dropdown
                     DropdownButtonFormField<String>(
                       value: selectedArea,
@@ -351,14 +403,18 @@ class DoctorManagementService {
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.map),
                       ),
-                      items: availableAreas.isEmpty
+                      items: selectedHeadquarter == null
                           ? [
                               const DropdownMenuItem(
                                 value: null,
-                                child: Text('No areas available'),
+                                child: Text('Select headquarter first'),
                               ),
                             ]
                           : availableAreas
+                                .where(
+                                  (area) =>
+                                      area.headquarter == selectedHeadquarter,
+                                )
                                 .map(
                                   (area) => DropdownMenuItem(
                                     value: area.area,
@@ -366,7 +422,7 @@ class DoctorManagementService {
                                   ),
                                 )
                                 .toList(),
-                      onChanged: availableAreas.isEmpty
+                      onChanged: selectedHeadquarter == null
                           ? null
                           : (val) {
                               setState(() {
@@ -542,7 +598,8 @@ class DoctorManagementService {
             ElevatedButton(
               onPressed: () async {
                 if (formKey.currentState!.validate() &&
-                    selectedCallDays.isNotEmpty) {
+                    selectedCallDays.isNotEmpty &&
+                    selectedHeadquarter != null) {
                   String result;
                   try {
                     if (editEntry == null) {
@@ -550,6 +607,7 @@ class DoctorManagementService {
                         name: nameController.text,
                         specialty: selectedSpecialty!,
                         area: selectedArea!,
+                        headquarter: selectedHeadquarter!,
                         dateOfBirth: selectedDateOfBirth,
                         phoneNo: phoneController.text,
                         marriageAnniversary: selectedMarriageAnniversary,
@@ -561,6 +619,7 @@ class DoctorManagementService {
                         name: nameController.text,
                         specialty: selectedSpecialty!,
                         area: selectedArea!,
+                        headquarter: selectedHeadquarter!,
                         dateOfBirth: selectedDateOfBirth,
                         phoneNo: phoneController.text,
                         marriageAnniversary: selectedMarriageAnniversary,
@@ -571,31 +630,37 @@ class DoctorManagementService {
                     if (result == 'success') {
                       Navigator.pop(context);
                       onSuccess();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            editEntry == null
-                                ? 'Doctor added successfully!'
-                                : 'Doctor updated successfully!',
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              editEntry == null
+                                  ? 'Doctor added successfully!'
+                                  : 'Doctor updated successfully!',
+                            ),
+                            backgroundColor: Colors.green,
                           ),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
+                        );
+                      }
                     } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(result),
+                          content: Text('Error: $e'),
                           backgroundColor: Colors.red,
                         ),
                       );
                     }
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
                   }
                 } else if (selectedCallDays.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
