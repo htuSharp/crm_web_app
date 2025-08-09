@@ -7,6 +7,7 @@ import '../../services/doctor_management_service.dart';
 import '../../services/stockist_management_service.dart';
 import '../../services/specialty_management_service.dart';
 import '../../services/headquarters_management_service.dart';
+import '../../services/manager_management_service.dart';
 
 class DataManagementPage extends StatefulWidget {
   const DataManagementPage({super.key});
@@ -30,6 +31,7 @@ class _DataManagementPageState extends State<DataManagementPage>
       SpecialtyManagementService();
   final HeadquartersManagementService _headquartersService =
       HeadquartersManagementService();
+  final ManagerManagementService _managerService = ManagerManagementService();
 
   // Search controllers for each section
   final TextEditingController _specialtySearchController =
@@ -43,6 +45,8 @@ class _DataManagementPageState extends State<DataManagementPage>
   final TextEditingController _doctorSearchController = TextEditingController();
   final TextEditingController _stockistSearchController =
       TextEditingController();
+  final TextEditingController _managerSearchController =
+      TextEditingController();
 
   // Search query strings
   String _specialtySearchQuery = '';
@@ -52,6 +56,7 @@ class _DataManagementPageState extends State<DataManagementPage>
   String _medicalSearchQuery = '';
   String _doctorSearchQuery = '';
   String _stockistSearchQuery = '';
+  String _managerSearchQuery = '';
 
   @override
   void initState() {
@@ -69,6 +74,7 @@ class _DataManagementPageState extends State<DataManagementPage>
       _medicalService.loadMedicals(),
       _doctorService.loadDoctors(),
       _stockistService.loadStockists(),
+      _managerService.loadManagers(),
     ]);
 
     if (mounted) {
@@ -85,6 +91,7 @@ class _DataManagementPageState extends State<DataManagementPage>
     _medicalSearchController.dispose();
     _doctorSearchController.dispose();
     _stockistSearchController.dispose();
+    _managerSearchController.dispose();
     super.dispose();
   }
 
@@ -117,6 +124,9 @@ class _DataManagementPageState extends State<DataManagementPage>
         break;
       case 'Stockist':
         await _stockistService.loadStockists();
+        break;
+      case 'Manager':
+        await _managerService.loadManagers();
         break;
       default:
         break;
@@ -152,6 +162,9 @@ class _DataManagementPageState extends State<DataManagementPage>
         break;
       case 'Stockist':
         content = _buildStockistSection();
+        break;
+      case 'Manager':
+        content = _buildManagerSection();
         break;
       default:
         content = const SizedBox.shrink();
@@ -774,9 +787,11 @@ class _DataManagementPageState extends State<DataManagementPage>
           medical.address.toLowerCase().contains(
             _medicalSearchQuery.toLowerCase(),
           ) ||
-          medical.attachedDoctor.toLowerCase().contains(
-            _medicalSearchQuery.toLowerCase(),
-          );
+          //make attachedDoctor optional
+          (medical.attachedDoctor != null &&
+              medical.attachedDoctor!.toLowerCase().contains(
+                _medicalSearchQuery.toLowerCase(),
+              ));
     }).toList();
 
     return Expanded(
@@ -987,9 +1002,13 @@ class _DataManagementPageState extends State<DataManagementPage>
           doctor.area.toLowerCase().contains(
             _doctorSearchQuery.toLowerCase(),
           ) ||
-          doctor.phoneNo.toLowerCase().contains(
+          doctor.headquarter.toLowerCase().contains(
             _doctorSearchQuery.toLowerCase(),
-          );
+          ) ||
+          (doctor.phoneNo?.toLowerCase().contains(
+                _doctorSearchQuery.toLowerCase(),
+              ) ??
+              false);
     }).toList();
 
     return Expanded(
@@ -1017,7 +1036,8 @@ class _DataManagementPageState extends State<DataManagementPage>
                         });
                       },
                       decoration: InputDecoration(
-                        hintText: 'Search by name, specialty, area, phone...',
+                        hintText:
+                            'Search by name, specialty, area, HQ, phone...',
                         prefixIcon: const Icon(Icons.search, size: 20),
                         suffixIcon: _doctorSearchQuery.isNotEmpty
                             ? IconButton(
@@ -1146,13 +1166,19 @@ class _DataManagementPageState extends State<DataManagementPage>
           stockist.contact.toLowerCase().contains(
             _stockistSearchQuery.toLowerCase(),
           ) ||
-          stockist.area.toLowerCase().contains(
+          stockist.headquarter.toLowerCase().contains(
             _stockistSearchQuery.toLowerCase(),
           ) ||
           stockist.address.toLowerCase().contains(
             _stockistSearchQuery.toLowerCase(),
           ) ||
-          stockist.licenseNumber.toLowerCase().contains(
+          stockist.gstNumber.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.license20B.toLowerCase().contains(
+            _stockistSearchQuery.toLowerCase(),
+          ) ||
+          stockist.license21B.toLowerCase().contains(
             _stockistSearchQuery.toLowerCase(),
           );
     }).toList();
@@ -1247,7 +1273,7 @@ class _DataManagementPageState extends State<DataManagementPage>
                           leading: const Icon(Icons.business),
                           title: Text(stockist.name),
                           subtitle: Text(
-                            '${stockist.company} • ${stockist.area}',
+                            '${stockist.company} • ${stockist.headquarter}',
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1284,6 +1310,163 @@ class _DataManagementPageState extends State<DataManagementPage>
                                   () async {
                                     await _stockistService.deleteStockist(
                                       stockist,
+                                    );
+                                    await _refreshCurrentSection();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManagerSection() {
+    // Filter managers based on search query
+    final filteredManagers = _managerService.managerList.where((manager) {
+      return manager.name.toLowerCase().contains(
+            _managerSearchQuery.toLowerCase(),
+          ) ||
+          manager.mrList.any(
+            (mr) =>
+                mr.toLowerCase().contains(_managerSearchQuery.toLowerCase()),
+          );
+    }).toList();
+
+    return Expanded(
+      child: Column(
+        children: [
+          Card(
+            margin: const EdgeInsets.all(8),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.supervised_user_circle,
+                    color: Colors.purple,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Managers',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _managerSearchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _managerSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by manager name or MR...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _managerSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 20),
+                                onPressed: () {
+                                  _managerSearchController.clear();
+                                  setState(() {
+                                    _managerSearchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => _managerService.showAddManagerDialog(
+                      context,
+                      _refreshCurrentSection,
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Add'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: filteredManagers.isEmpty
+                ? Center(
+                    child: Text(
+                      _managerSearchQuery.isNotEmpty
+                          ? 'No managers found matching "$_managerSearchQuery"'
+                          : 'No managers added yet.\nClick "Add" to get started.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: filteredManagers.length,
+                    itemBuilder: (context, index) {
+                      final manager = filteredManagers[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: const Icon(Icons.supervised_user_circle),
+                          title: Text(manager.name),
+                          subtitle: Text('MRs: ${manager.mrList.join(", ")}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.visibility,
+                                  color: Colors.green,
+                                ),
+                                onPressed: () =>
+                                    _showManagerViewDialog(context, manager),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blue,
+                                ),
+                                onPressed: () =>
+                                    _managerService.showEditManagerDialog(
+                                      context,
+                                      manager,
+                                      _refreshCurrentSection,
+                                    ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () => _showAsyncDeleteConfirmation(
+                                  context,
+                                  'Manager',
+                                  manager.name,
+                                  () async {
+                                    await _managerService.deleteManager(
+                                      manager,
                                     );
                                     await _refreshCurrentSection();
                                   },
@@ -1424,7 +1607,10 @@ class _DataManagementPageState extends State<DataManagementPage>
                 _buildDetailRow('Contact Person', medical.contactPerson),
                 _buildDetailRow('Phone', medical.phoneNo),
                 _buildDetailRow('Address', medical.address),
-                _buildDetailRow('Attached Doctor', medical.attachedDoctor),
+                _buildDetailRow(
+                  'Attached Doctor',
+                  medical.attachedDoctor ?? '',
+                ),
               ],
             ),
           ),
@@ -1461,7 +1647,8 @@ class _DataManagementPageState extends State<DataManagementPage>
                 _buildDetailRow('Specialty', doctor.specialty),
                 _buildDetailRow('Headquarters', doctor.headquarter),
                 _buildDetailRow('Area', doctor.area),
-                _buildDetailRow('Phone', doctor.phoneNo),
+                _buildDetailRow('Phone', doctor.phoneNo ?? ''),
+                _buildDetailRow('Call Time', doctor.callTime),
                 if (doctor.dateOfBirth != null)
                   _buildDetailRow('Date of Birth', '${doctor.dateOfBirth}'),
                 if (doctor.marriageAnniversary != null)
@@ -1506,11 +1693,50 @@ class _DataManagementPageState extends State<DataManagementPage>
                 _buildDetailRow('Name', stockist.name),
                 _buildDetailRow('Company', stockist.company),
                 _buildDetailRow('Headquarters', stockist.headquarter),
-                _buildDetailRow('Area', stockist.area),
                 _buildDetailRow('Contact', stockist.contact),
                 _buildDetailRow('Address', stockist.address),
-                if (stockist.licenseNumber.isNotEmpty)
-                  _buildDetailRow('License Number', stockist.licenseNumber),
+                _buildDetailRow('GST Number', stockist.gstNumber),
+                if (stockist.license20B.isNotEmpty)
+                  _buildDetailRow('20B License', stockist.license20B),
+                if (stockist.license21B.isNotEmpty)
+                  _buildDetailRow('21B License', stockist.license21B),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showManagerViewDialog(BuildContext context, manager) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.supervised_user_circle, color: Colors.purple),
+            const SizedBox(width: 8),
+            const Text('Manager Details'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Name', manager.name),
+                _buildDetailRow(
+                  'MRs Under Management',
+                  manager.mrList.join(', '),
+                ),
               ],
             ),
           ),

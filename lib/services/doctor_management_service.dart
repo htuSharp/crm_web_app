@@ -12,6 +12,9 @@ class DoctorManagementService {
   bool _isLoading = false;
   String? _error;
 
+  // Call time options
+  static const List<String> callTimeOptions = ['Morning', 'Evening', 'Both'];
+
   List<DoctorEntry> get doctorsList => List.unmodifiable(_doctorsList);
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -93,13 +96,21 @@ class DoctorManagementService {
     return null;
   }
 
-  String? validatePhoneNo(String phoneNo) {
-    if (phoneNo.trim().isEmpty) {
-      return 'Phone number cannot be empty';
+  String? validatePhoneNo(String? phoneNo) {
+    // Phone number is now optional
+    if (phoneNo == null || phoneNo.trim().isEmpty) {
+      return null; // Allow empty phone numbers
     }
     final phoneRegex = RegExp(r'^[0-9]{10}$');
     if (!phoneRegex.hasMatch(phoneNo.trim())) {
       return 'Please enter a valid 10-digit phone number';
+    }
+    return null;
+  }
+
+  String? validateCallTime(String? callTime) {
+    if (callTime == null || callTime.isEmpty) {
+      return 'Please select a call time';
     }
     return null;
   }
@@ -140,7 +151,8 @@ class DoctorManagementService {
     required String area,
     required String headquarter,
     DateTime? dateOfBirth,
-    required String phoneNo,
+    String? phoneNo, // Made optional
+    required String callTime, // Added call time
     DateTime? marriageAnniversary,
     required List<String> callDays,
   }) async {
@@ -157,6 +169,9 @@ class DoctorManagementService {
     final phoneError = validatePhoneNo(phoneNo);
     if (phoneError != null) return phoneError;
 
+    final callTimeError = validateCallTime(callTime);
+    if (callTimeError != null) return callTimeError;
+
     final callDaysError = validateCallDays(callDays);
     if (callDaysError != null) return callDaysError;
 
@@ -172,7 +187,8 @@ class DoctorManagementService {
         area: area,
         headquarter: headquarter,
         dateOfBirth: dateOfBirth,
-        phoneNo: phoneNo.trim(),
+        phoneNo: phoneNo?.trim(),
+        callTime: callTime,
         marriageAnniversary: marriageAnniversary,
         callDays: List<String>.from(callDays),
       );
@@ -192,7 +208,8 @@ class DoctorManagementService {
     required String area,
     required String headquarter,
     DateTime? dateOfBirth,
-    required String phoneNo,
+    String? phoneNo, // Made optional
+    required String callTime, // Added call time
     DateTime? marriageAnniversary,
     required List<String> callDays,
   }) async {
@@ -209,6 +226,9 @@ class DoctorManagementService {
     final phoneError = validatePhoneNo(phoneNo);
     if (phoneError != null) return phoneError;
 
+    final callTimeError = validateCallTime(callTime);
+    if (callTimeError != null) return callTimeError;
+
     final callDaysError = validateCallDays(callDays);
     if (callDaysError != null) return callDaysError;
 
@@ -224,7 +244,8 @@ class DoctorManagementService {
         area: area,
         headquarter: headquarter,
         dateOfBirth: dateOfBirth,
-        phoneNo: phoneNo.trim(),
+        phoneNo: phoneNo?.trim(),
+        callTime: callTime,
         marriageAnniversary: marriageAnniversary,
         callDays: List<String>.from(callDays),
       );
@@ -287,6 +308,7 @@ class DoctorManagementService {
     String? selectedSpecialty = editEntry?.specialty;
     String? selectedHeadquarter = editEntry?.headquarter;
     String? selectedArea = editEntry?.area;
+    String? selectedCallTime = editEntry?.callTime; // Added call time
     DateTime? selectedDateOfBirth = editEntry?.dateOfBirth;
     DateTime? selectedMarriageAnniversary = editEntry?.marriageAnniversary;
     List<String> selectedCallDays = List<String>.from(
@@ -470,11 +492,11 @@ class DoctorManagementService {
                     ),
                     const SizedBox(height: 16),
 
-                    // Phone Number field
+                    // Phone Number field (Optional)
                     TextFormField(
                       controller: phoneController,
                       decoration: const InputDecoration(
-                        labelText: 'Phone Number *',
+                        labelText: 'Phone Number (Optional)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.phone),
                         hintText: '9876543210',
@@ -484,7 +506,30 @@ class DoctorManagementService {
                         FilteringTextInputFormatter.digitsOnly,
                         LengthLimitingTextInputFormatter(10),
                       ],
-                      validator: (value) => validatePhoneNo(value ?? ''),
+                      validator: (value) => validatePhoneNo(value),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Call Time dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedCallTime,
+                      decoration: const InputDecoration(
+                        labelText: 'Call Time *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.access_time),
+                      ),
+                      items: callTimeOptions.map((time) {
+                        return DropdownMenuItem<String>(
+                          value: time,
+                          child: Text(time),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedCallTime = value;
+                        });
+                      },
+                      validator: (value) => validateCallTime(value),
                     ),
                     const SizedBox(height: 16),
 
@@ -601,7 +646,8 @@ class DoctorManagementService {
               onPressed: () async {
                 if (formKey.currentState!.validate() &&
                     selectedCallDays.isNotEmpty &&
-                    selectedHeadquarter != null) {
+                    selectedHeadquarter != null &&
+                    selectedCallTime != null) {
                   String result;
                   try {
                     if (editEntry == null) {
@@ -611,7 +657,10 @@ class DoctorManagementService {
                         area: selectedArea!,
                         headquarter: selectedHeadquarter!,
                         dateOfBirth: selectedDateOfBirth,
-                        phoneNo: phoneController.text,
+                        phoneNo: phoneController.text.isEmpty
+                            ? null
+                            : phoneController.text,
+                        callTime: selectedCallTime!,
                         marriageAnniversary: selectedMarriageAnniversary,
                         callDays: selectedCallDays,
                       );
@@ -623,12 +672,14 @@ class DoctorManagementService {
                         area: selectedArea!,
                         headquarter: selectedHeadquarter!,
                         dateOfBirth: selectedDateOfBirth,
-                        phoneNo: phoneController.text,
+                        phoneNo: phoneController.text.isEmpty
+                            ? null
+                            : phoneController.text,
+                        callTime: selectedCallTime!,
                         marriageAnniversary: selectedMarriageAnniversary,
                         callDays: selectedCallDays,
                       );
                     }
-
                     if (result == 'success' && context.mounted) {
                       Navigator.pop(context);
                       onSuccess();

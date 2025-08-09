@@ -5,6 +5,7 @@ import '../models/mr_entry.dart';
 import '../repositories/mr_repository.dart';
 import '../services/headquarters_management_service.dart';
 import '../services/area_management_service.dart';
+import '../services/manager_management_service.dart';
 import '../widgets/multi_select_dropdown.dart';
 
 class MRManagementService {
@@ -13,8 +14,15 @@ class MRManagementService {
   final HeadquartersManagementService _headquartersService =
       HeadquartersManagementService();
   final AreaManagementService _areaService = AreaManagementService();
+  ManagerManagementService? _managerService; // Made nullable and lazy-loaded
   bool _isLoading = false;
   String? _error;
+
+  // Lazy getter for manager service to avoid circular dependency
+  ManagerManagementService get _getManagerService {
+    _managerService ??= ManagerManagementService();
+    return _managerService!;
+  }
 
   List<MREntry> get mrList => List.unmodifiable(_mrList);
   bool get isLoading => _isLoading;
@@ -174,6 +182,7 @@ class MRManagementService {
     required String bankName,
     required String ifscCode,
     required List<String> headquarters,
+    String? managerId,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -217,6 +226,7 @@ class MRManagementService {
         bankName: bankName.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
         headquarters: headquarters,
+        managerId: managerId,
       ).withGeneratedId();
 
       await _mrRepository.createMR(newMR);
@@ -239,6 +249,7 @@ class MRManagementService {
     required String bankName,
     required String ifscCode,
     required List<String> headquarters,
+    String? managerId,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -282,6 +293,7 @@ class MRManagementService {
         bankName: bankName.trim(),
         ifscCode: ifscCode.trim().toUpperCase(),
         headquarters: headquarters,
+        managerId: managerId,
       );
 
       await _mrRepository.updateMR(updatedMR);
@@ -327,6 +339,7 @@ class MRManagementService {
     // Load data from services
     await _headquartersService.loadHeadquarters();
     await _areaService.loadAreas();
+    await _getManagerService.loadManagers();
 
     final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
@@ -354,10 +367,12 @@ class MRManagementService {
     // Selected values and available options
     final availableHeadquarters = _headquartersService.headquartersNames;
     final availableAreas = _areaService.areas;
+    final availableManagers = _getManagerService.managerList;
 
     String selectedSex = editEntry?.sex ?? 'Male';
     List<String> selectedHeadquarters = editEntry?.headquarters ?? [];
     List<String> selectedAreas = editEntry?.areaNames ?? [];
+    String? selectedManagerId = editEntry?.managerId;
 
     if (!context.mounted) return;
 
@@ -513,6 +528,34 @@ class MRManagementService {
                       },
                     ),
                     const SizedBox(height: 16),
+
+                    // Manager dropdown (optional)
+                    DropdownButtonFormField<String>(
+                      value: selectedManagerId,
+                      decoration: const InputDecoration(
+                        labelText: 'Manager (Optional)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.supervisor_account),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('None'),
+                        ),
+                        ...availableManagers.map(
+                          (manager) => DropdownMenuItem<String>(
+                            value: manager.id,
+                            child: Text(manager.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedManagerId = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     const Divider(),
                     const Text(
                       'Banking Details',
@@ -584,6 +627,7 @@ class MRManagementService {
                       bankName: bankController.text,
                       ifscCode: ifscController.text,
                       headquarters: selectedHeadquarters,
+                      managerId: selectedManagerId,
                     );
                   } else {
                     result = await editMR(
@@ -598,6 +642,7 @@ class MRManagementService {
                       bankName: bankController.text,
                       ifscCode: ifscController.text,
                       headquarters: selectedHeadquarters,
+                      managerId: selectedManagerId,
                     );
                   }
 

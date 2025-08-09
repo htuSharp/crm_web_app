@@ -12,6 +12,7 @@ class MREntry {
   final String bankName;
   final String ifscCode;
   final List<String> headquarters; // Changed to List for multi-select
+  final String? managerId; // Optional manager field
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -27,6 +28,7 @@ class MREntry {
     required this.bankName,
     required this.ifscCode,
     required this.headquarters,
+    this.managerId,
     this.createdAt,
     this.updatedAt,
   });
@@ -45,6 +47,7 @@ class MREntry {
       bankName: bankName,
       ifscCode: ifscCode,
       headquarters: headquarters,
+      managerId: managerId,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -62,6 +65,7 @@ class MREntry {
     String? bankName,
     String? ifscCode,
     List<String>? headquarters,
+    String? managerId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -77,6 +81,7 @@ class MREntry {
       bankName: bankName ?? this.bankName,
       ifscCode: ifscCode ?? this.ifscCode,
       headquarters: headquarters ?? this.headquarters,
+      managerId: managerId ?? this.managerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -96,6 +101,7 @@ class MREntry {
       'bank_name': bankName,
       'ifsc_code': ifscCode,
       'headquarters': headquarters,
+      if (managerId != null) 'manager_id': managerId,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
@@ -132,6 +138,7 @@ class MREntry {
       bankName: json['bankName'] ?? json['bank_name'] ?? '',
       ifscCode: json['ifscCode'] ?? json['ifsc_code'] ?? '',
       headquarters: List<String>.from(json['headquarters'] ?? []),
+      managerId: json['managerId'] ?? json['manager_id'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

@@ -45,7 +45,16 @@ CREATE TABLE IF NOT EXISTS areas (
     UNIQUE(area, headquarter)
 );
 
--- 4. Medical Representatives Table (updated for multi-select)
+-- 4. Managers Table (with multi-select MRs) - moved before medical_representatives
+CREATE TABLE IF NOT EXISTS managers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    mr_list TEXT[] NOT NULL DEFAULT '{}', -- Array of MR names under this manager
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 5. Medical Representatives Table (updated for multi-select and optional manager)
 CREATE TABLE IF NOT EXISTS medical_representatives (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -58,11 +67,12 @@ CREATE TABLE IF NOT EXISTS medical_representatives (
     bank_name VARCHAR(255),
     ifsc_code VARCHAR(20),
     headquarters TEXT[] DEFAULT '{}', -- Array of headquarters for multi-select
+    manager_id UUID REFERENCES managers(id), -- Optional manager reference
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. Doctors Table (with headquarters field)
+-- 6. Doctors Table (with headquarters field, optional phone, and call time)
 CREATE TABLE IF NOT EXISTS doctors (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -70,14 +80,15 @@ CREATE TABLE IF NOT EXISTS doctors (
     area VARCHAR(255) NOT NULL,
     headquarter VARCHAR(255) NOT NULL, -- Added headquarters field
     date_of_birth DATE,
-    phone_no VARCHAR(20) NOT NULL,
+    phone_no VARCHAR(20), -- Made optional (removed NOT NULL)
+    call_time VARCHAR(20) NOT NULL DEFAULT 'Morning', -- Added call time field (Morning/Evening/Both)
     marriage_anniversary DATE,
     call_days TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. Medical Facilities Table
+-- 7. Medical Facilities Table
 CREATE TABLE IF NOT EXISTS medical_facilities (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -86,21 +97,22 @@ CREATE TABLE IF NOT EXISTS medical_facilities (
     contact_person VARCHAR(255) NOT NULL,
     phone_no VARCHAR(20) NOT NULL,
     address TEXT NOT NULL,
-    attached_doctor VARCHAR(255) NOT NULL,
+    attached_doctor VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. Stockists Table (with headquarters field)
+-- 8. Stockists Table (updated: removed area, added GST and separate license fields)
 CREATE TABLE IF NOT EXISTS stockists (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     company VARCHAR(255) NOT NULL,
     contact VARCHAR(255) NOT NULL, -- Contact information
     address TEXT NOT NULL,
-    area VARCHAR(255) NOT NULL,
-    headquarter VARCHAR(255) NOT NULL, -- Added headquarters field
-    license_number VARCHAR(100),
+    headquarter VARCHAR(255) NOT NULL, -- Headquarters field
+    gst_number VARCHAR(15) NOT NULL, -- GST number (15 characters)
+    license_20b VARCHAR(100), -- 20B license number
+    license_21b VARCHAR(100), -- 21B license number
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -124,6 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_mrs_name ON medical_representatives(name);
 CREATE INDEX IF NOT EXISTS idx_mrs_phone ON medical_representatives(phone_no);
 CREATE INDEX IF NOT EXISTS idx_mrs_area_names ON medical_representatives USING GIN(area_names);
 CREATE INDEX IF NOT EXISTS idx_mrs_headquarters ON medical_representatives USING GIN(headquarters);
+CREATE INDEX IF NOT EXISTS idx_mrs_manager_id ON medical_representatives(manager_id);
 
 -- Doctors indexes
 CREATE INDEX IF NOT EXISTS idx_doctors_name ON doctors(name);
@@ -131,6 +144,7 @@ CREATE INDEX IF NOT EXISTS idx_doctors_specialty ON doctors(specialty);
 CREATE INDEX IF NOT EXISTS idx_doctors_area ON doctors(area);
 CREATE INDEX IF NOT EXISTS idx_doctors_headquarter ON doctors(headquarter);
 CREATE INDEX IF NOT EXISTS idx_doctors_phone ON doctors(phone_no);
+CREATE INDEX IF NOT EXISTS idx_doctors_call_time ON doctors(call_time);
 
 -- Medical Facilities indexes
 CREATE INDEX IF NOT EXISTS idx_medicals_name ON medical_facilities(name);
@@ -141,8 +155,12 @@ CREATE INDEX IF NOT EXISTS idx_medicals_doctor ON medical_facilities(attached_do
 -- Stockists indexes
 CREATE INDEX IF NOT EXISTS idx_stockists_name ON stockists(name);
 CREATE INDEX IF NOT EXISTS idx_stockists_company ON stockists(company);
-CREATE INDEX IF NOT EXISTS idx_stockists_area ON stockists(area);
 CREATE INDEX IF NOT EXISTS idx_stockists_headquarter ON stockists(headquarter);
+CREATE INDEX IF NOT EXISTS idx_stockists_gst ON stockists(gst_number);
+
+-- Managers indexes
+CREATE INDEX IF NOT EXISTS idx_managers_name ON managers(name);
+CREATE INDEX IF NOT EXISTS idx_managers_mr_list ON managers USING GIN(mr_list);
 
 -- ================================================================================
 -- ENABLE ROW LEVEL SECURITY (RLS)
@@ -155,6 +173,7 @@ ALTER TABLE medical_representatives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE doctors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE medical_facilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stockists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE managers ENABLE ROW LEVEL SECURITY;
 
 -- ================================================================================
 -- CREATE RLS POLICIES (PERMISSIVE FOR NOW - ADJUST FOR PRODUCTION)
@@ -168,6 +187,7 @@ DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON medical
 DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON doctors;
 DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON medical_facilities;
 DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON stockists;
+DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON managers;
 
 -- Headquarters policies
 CREATE POLICY "Enable all operations for authenticated users" ON headquarters
@@ -195,6 +215,10 @@ FOR ALL USING (true);
 
 -- Stockists policies
 CREATE POLICY "Enable all operations for authenticated users" ON stockists
+FOR ALL USING (true);
+
+-- Managers policies
+CREATE POLICY "Enable all operations for authenticated users" ON managers
 FOR ALL USING (true);
 
 -- ================================================================================
@@ -237,6 +261,10 @@ FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_stockists_updated_at ON stockists;
 CREATE TRIGGER update_stockists_updated_at BEFORE UPDATE ON stockists
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_managers_updated_at ON managers;
+CREATE TRIGGER update_managers_updated_at BEFORE UPDATE ON managers
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ================================================================================
@@ -282,3 +310,9 @@ ON CONFLICT (area, headquarter) DO NOTHING;
 -- SELECT * FROM headquarters;
 -- SELECT * FROM specialties;
 -- SELECT * FROM areas;
+
+
+--Additional changes as per requirement
+--alter field attached doctor to not null
+ALTER TABLE medical_facilities
+ALTER COLUMN attached_doctor DROP NOT NULL;
