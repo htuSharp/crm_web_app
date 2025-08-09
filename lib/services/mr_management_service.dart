@@ -376,6 +376,8 @@ class MRManagementService {
 
     if (!context.mounted) return;
 
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
