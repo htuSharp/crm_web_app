@@ -6,9 +6,10 @@ class StockistEntry {
   final String company;
   final String contact;
   final String address;
-  final String area;
   final String headquarter;
-  final String licenseNumber;
+  final String gstNumber; // Added GST number field
+  final String license20B; // 20B license number
+  final String license21B; // 21B license number
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -18,9 +19,10 @@ class StockistEntry {
     required this.company,
     required this.contact,
     required this.address,
-    required this.area,
     required this.headquarter,
-    required this.licenseNumber,
+    required this.gstNumber,
+    required this.license20B,
+    required this.license21B,
     this.createdAt,
     this.updatedAt,
   });
@@ -33,9 +35,10 @@ class StockistEntry {
       company: company,
       contact: contact,
       address: address,
-      area: area,
       headquarter: headquarter,
-      licenseNumber: licenseNumber,
+      gstNumber: gstNumber,
+      license20B: license20B,
+      license21B: license21B,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -47,9 +50,10 @@ class StockistEntry {
     String? company,
     String? contact,
     String? address,
-    String? area,
     String? headquarter,
-    String? licenseNumber,
+    String? gstNumber,
+    String? license20B,
+    String? license21B,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -59,9 +63,10 @@ class StockistEntry {
       company: company ?? this.company,
       contact: contact ?? this.contact,
       address: address ?? this.address,
-      area: area ?? this.area,
       headquarter: headquarter ?? this.headquarter,
-      licenseNumber: licenseNumber ?? this.licenseNumber,
+      gstNumber: gstNumber ?? this.gstNumber,
+      license20B: license20B ?? this.license20B,
+      license21B: license21B ?? this.license21B,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -75,9 +80,10 @@ class StockistEntry {
       'company': company,
       'contact': contact,
       'address': address,
-      'area': area,
       'headquarter': headquarter,
-      'license_number': licenseNumber,
+      'gst_number': gstNumber,
+      'license_20b': license20B,
+      'license_21b': license21B,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
@@ -90,9 +96,10 @@ class StockistEntry {
       'company': company,
       'contact': contact,
       'address': address,
-      'area': area,
       'headquarter': headquarter,
-      'licenseNumber': licenseNumber,
+      'gstNumber': gstNumber,
+      'license20B': license20B,
+      'license21B': license21B,
     };
   }
 
@@ -103,9 +110,10 @@ class StockistEntry {
       company: json['company'] ?? '',
       contact: json['contact'] ?? '',
       address: json['address'] ?? '',
-      area: json['area'] ?? '',
       headquarter: json['headquarter'] ?? '',
-      licenseNumber: json['licenseNumber'] ?? json['license_number'] ?? '',
+      gstNumber: json['gstNumber'] ?? json['gst_number'] ?? '',
+      license20B: json['license20B'] ?? json['license_20b'] ?? '',
+      license21B: json['license21B'] ?? json['license_21b'] ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -124,8 +132,10 @@ class StockistEntry {
         other.company == company &&
         other.contact == contact &&
         other.address == address &&
-        other.area == area &&
-        other.licenseNumber == licenseNumber;
+        other.headquarter == headquarter &&
+        other.gstNumber == gstNumber &&
+        other.license20B == license20B &&
+        other.license21B == license21B;
   }
 
   @override
@@ -135,11 +145,13 @@ class StockistEntry {
         company.hashCode ^
         contact.hashCode ^
         address.hashCode ^
-        area.hashCode ^
-        licenseNumber.hashCode;
+        headquarter.hashCode ^
+        gstNumber.hashCode ^
+        license20B.hashCode ^
+        license21B.hashCode;
   }
 
   @override
   String toString() =>
-      'StockistEntry(id: $id, name: $name, company: $company, contact: $contact, address: $address, area: $area, licenseNumber: $licenseNumber)';
+      'StockistEntry(id: $id, name: $name, company: $company, contact: $contact, address: $address, headquarter: $headquarter, gstNumber: $gstNumber, license20B: $license20B, license21B: $license21B)';
 }

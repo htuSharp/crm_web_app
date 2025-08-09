@@ -7,7 +7,8 @@ class DoctorEntry {
   final String area;
   final String headquarter; // Added headquarter field
   final DateTime? dateOfBirth;
-  final String phoneNo;
+  final String? phoneNo; // Made optional
+  final String callTime; // Added call time field (Morning/Evening/Both)
   final DateTime? marriageAnniversary;
   final List<String> callDays;
   final DateTime createdAt;
@@ -20,7 +21,8 @@ class DoctorEntry {
     required this.area,
     required this.headquarter,
     this.dateOfBirth,
-    required this.phoneNo,
+    this.phoneNo, // Made optional
+    required this.callTime, // Added call time field
     this.marriageAnniversary,
     required this.callDays,
     DateTime? createdAt,
@@ -37,6 +39,7 @@ class DoctorEntry {
     String? headquarter,
     DateTime? dateOfBirth,
     String? phoneNo,
+    String? callTime, // Added call time field
     DateTime? marriageAnniversary,
     List<String>? callDays,
     DateTime? createdAt,
@@ -50,6 +53,7 @@ class DoctorEntry {
       headquarter: headquarter ?? this.headquarter,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       phoneNo: phoneNo ?? this.phoneNo,
+      callTime: callTime ?? this.callTime, // Added call time field
       marriageAnniversary: marriageAnniversary ?? this.marriageAnniversary,
       callDays: callDays ?? this.callDays,
       createdAt: createdAt ?? this.createdAt,
@@ -66,6 +70,7 @@ class DoctorEntry {
       'headquarter': headquarter,
       'date_of_birth': dateOfBirth?.toIso8601String(),
       'phone_no': phoneNo,
+      'call_time': callTime, // Added call time field
       'marriage_anniversary': marriageAnniversary?.toIso8601String(),
       'call_days': callDays,
       'created_at': createdAt.toIso8601String(),
@@ -92,7 +97,9 @@ class DoctorEntry {
       dateOfBirth: json['date_of_birth'] != null
           ? DateTime.parse(json['date_of_birth'])
           : null,
-      phoneNo: json['phone_no'] ?? '',
+      phoneNo: json['phone_no'],
+      callTime:
+          json['call_time'] ?? 'Morning', // Default to Morning if not specified
       marriageAnniversary: json['marriage_anniversary'] != null
           ? DateTime.parse(json['marriage_anniversary'])
           : null,
@@ -143,5 +150,5 @@ class DoctorEntry {
 
   @override
   String toString() =>
-      'DoctorEntry(id: $id, name: $name, specialty: $specialty, area: $area, dateOfBirth: $dateOfBirth, phoneNo: $phoneNo, marriageAnniversary: $marriageAnniversary, callDays: $callDays, createdAt: $createdAt, updatedAt: $updatedAt)';
+      'DoctorEntry(id: $id, name: $name, specialty: $specialty, area: $area, headquarter: $headquarter, dateOfBirth: $dateOfBirth, phoneNo: $phoneNo, callTime: $callTime, marriageAnniversary: $marriageAnniversary, callDays: $callDays, createdAt: $createdAt, updatedAt: $updatedAt)';
 }

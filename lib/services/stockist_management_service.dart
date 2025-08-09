@@ -3,6 +3,7 @@ import '../models/stockist_entry.dart';
 import '../services/headquarters_management_service.dart';
 import '../services/area_management_service.dart';
 import '../repositories/stockist_repository.dart';
+import '../utils/gst_validator.dart';
 
 class StockistManagementService {
   final List<StockistEntry> _stockistList = [];
@@ -110,19 +111,28 @@ class StockistManagementService {
     return null;
   }
 
-  String? validateArea(String area) {
-    if (area.trim().isEmpty) {
-      return 'Area cannot be empty';
+  String? validateGSTNumber(String gstNumber) {
+    return GSTValidator.validateGSTNumber(gstNumber);
+  }
+
+  String? validateLicense20B(String license) {
+    // Optional field
+    if (license.trim().isEmpty) {
+      return null;
+    }
+    if (license.trim().length < 5) {
+      return 'Please enter a valid 20B license number';
     }
     return null;
   }
 
-  String? validateLicenseNumber(String license) {
+  String? validateLicense21B(String license) {
+    // Optional field
     if (license.trim().isEmpty) {
-      return 'License number cannot be empty';
+      return null;
     }
     if (license.trim().length < 5) {
-      return 'Please enter a valid license number';
+      return 'Please enter a valid 21B license number';
     }
     return null;
   }
@@ -144,30 +154,15 @@ class StockistManagementService {
     }
   }
 
-  Future<bool> isDuplicateLicense(
-    String license, {
-    StockistEntry? excluding,
-  }) async {
-    try {
-      final stockists = await _stockistRepository.searchStockists(license);
-      return stockists.any(
-        (entry) =>
-            entry.licenseNumber.toLowerCase() == license.toLowerCase() &&
-            entry != excluding,
-      );
-    } catch (e) {
-      return false; // If error, allow operation to proceed
-    }
-  }
-
   Future<String> addStockist({
     required String name,
     required String company,
     required String contact,
     required String address,
-    required String area,
     required String headquarter,
-    required String licenseNumber,
+    required String gstNumber,
+    String? license20B,
+    String? license21B,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -182,21 +177,20 @@ class StockistManagementService {
     final addressError = validateAddress(address);
     if (addressError != null) return addressError;
 
-    final areaError = validateArea(area);
-    if (areaError != null) return areaError;
+    final gstError = validateGSTNumber(gstNumber);
+    if (gstError != null) return gstError;
 
-    final licenseError = validateLicenseNumber(licenseNumber);
-    if (licenseError != null) return licenseError;
+    final license20BError = validateLicense20B(license20B ?? '');
+    if (license20BError != null) return license20BError;
+
+    final license21BError = validateLicense21B(license21B ?? '');
+    if (license21BError != null) return license21BError;
 
     final trimmedName = name.trim();
-    final trimmedLicense = licenseNumber.trim();
+    final trimmedGST = gstNumber.trim().toUpperCase();
 
     if (await isDuplicateStockist(trimmedName)) {
       return 'Stockist "$trimmedName" already exists';
-    }
-
-    if (await isDuplicateLicense(trimmedLicense)) {
-      return 'License number "$trimmedLicense" already exists';
     }
 
     try {
@@ -205,10 +199,11 @@ class StockistManagementService {
         company: company.trim(),
         contact: contact.trim(),
         address: address.trim(),
-        area: area.trim(),
         headquarter: headquarter,
-        licenseNumber: trimmedLicense,
-      );
+        gstNumber: trimmedGST,
+        license20B: license20B?.trim() ?? '',
+        license21B: license21B?.trim() ?? '',
+      ).withGeneratedId();
 
       await _stockistRepository.createStockist(newStockist);
       _stockistList.add(newStockist);
@@ -224,9 +219,10 @@ class StockistManagementService {
     required String company,
     required String contact,
     required String address,
-    required String area,
     required String headquarter,
-    required String licenseNumber,
+    required String gstNumber,
+    String? license20B,
+    String? license21B,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -241,21 +237,20 @@ class StockistManagementService {
     final addressError = validateAddress(address);
     if (addressError != null) return addressError;
 
-    final areaError = validateArea(area);
-    if (areaError != null) return areaError;
+    final gstError = validateGSTNumber(gstNumber);
+    if (gstError != null) return gstError;
 
-    final licenseError = validateLicenseNumber(licenseNumber);
-    if (licenseError != null) return licenseError;
+    final license20BError = validateLicense20B(license20B ?? '');
+    if (license20BError != null) return license20BError;
+
+    final license21BError = validateLicense21B(license21B ?? '');
+    if (license21BError != null) return license21BError;
 
     final trimmedName = name.trim();
-    final trimmedLicense = licenseNumber.trim();
+    final trimmedGST = gstNumber.trim().toUpperCase();
 
     if (await isDuplicateStockist(trimmedName, excluding: oldEntry)) {
       return 'Stockist "$trimmedName" already exists';
-    }
-
-    if (await isDuplicateLicense(trimmedLicense, excluding: oldEntry)) {
-      return 'License number "$trimmedLicense" already exists';
     }
 
     try {
@@ -264,9 +259,10 @@ class StockistManagementService {
         company: company.trim(),
         contact: contact.trim(),
         address: address.trim(),
-        area: area.trim(),
         headquarter: headquarter,
-        licenseNumber: trimmedLicense,
+        gstNumber: trimmedGST,
+        license20B: license20B?.trim() ?? '',
+        license21B: license21B?.trim() ?? '',
       );
 
       await _stockistRepository.updateStockist(updatedStockist);
@@ -326,16 +322,20 @@ class StockistManagementService {
     final addressController = TextEditingController(
       text: editEntry?.address ?? '',
     );
-    final licenseController = TextEditingController(
-      text: editEntry?.licenseNumber ?? '',
+    final gstController = TextEditingController(
+      text: editEntry?.gstNumber ?? '',
+    );
+    final license20BController = TextEditingController(
+      text: editEntry?.license20B ?? '',
+    );
+    final license21BController = TextEditingController(
+      text: editEntry?.license21B ?? '',
     );
 
     // Selected values and available options
     final availableHeadquarters = _headquartersService.headquartersNames;
-    final availableAreas = _areaService.areas;
 
     String? selectedHeadquarter = editEntry?.headquarter;
-    String? selectedArea = editEntry?.area;
 
     if (!context.mounted) return;
 
@@ -403,56 +403,11 @@ class StockistManagementService {
                       onChanged: (value) {
                         setState(() {
                           selectedHeadquarter = value;
-                          selectedArea =
-                              null; // Reset area when headquarters changes
                         });
                       },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please select headquarters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Area dropdown
-                    DropdownButtonFormField<String>(
-                      value: selectedArea,
-                      decoration: const InputDecoration(
-                        labelText: 'Service Area *',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
-                      ),
-                      items: selectedHeadquarter == null
-                          ? [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('Select headquarter first'),
-                              ),
-                            ]
-                          : availableAreas
-                                .where(
-                                  (area) =>
-                                      area.headquarter == selectedHeadquarter,
-                                )
-                                .map(
-                                  (area) => DropdownMenuItem(
-                                    value: area.area,
-                                    child: Text(area.area),
-                                  ),
-                                )
-                                .toList(),
-                      onChanged: selectedHeadquarter == null
-                          ? null
-                          : (value) {
-                              setState(() {
-                                selectedArea = value;
-                              });
-                            },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select service area';
                         }
                         return null;
                       },
@@ -470,6 +425,43 @@ class StockistManagementService {
                       textCapitalization: TextCapitalization.words,
                     ),
                     const SizedBox(height: 16),
+                    TextFormField(
+                      controller: addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Business Address *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.home),
+                      ),
+                      maxLines: 3,
+                      validator: (value) => validateAddress(value ?? ''),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: gstController,
+                      decoration: const InputDecoration(
+                        labelText: 'GST Number *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.receipt_long),
+                        hintText: '15-digit GST number',
+                      ),
+                      validator: (value) => validateGSTNumber(value ?? ''),
+                      textCapitalization: TextCapitalization.characters,
+                      onChanged: (value) {
+                        if (value.length == 15) {
+                          // Auto-format GST number
+                          final formatted = GSTValidator.formatGST(value);
+                          if (formatted != value) {
+                            gstController.text = formatted;
+                            gstController.selection =
+                                TextSelection.fromPosition(
+                                  TextPosition(offset: formatted.length),
+                                );
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     const Divider(),
                     const Text(
                       'License Information',
@@ -480,14 +472,26 @@ class StockistManagementService {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: licenseController,
+                      controller: license20BController,
                       decoration: const InputDecoration(
-                        labelText: 'License Number *',
+                        labelText: '20B License Number (Optional)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.card_membership),
-                        hintText: 'Drug License/Trade License No.',
+                        hintText: 'Drug License 20B',
                       ),
-                      validator: (value) => validateLicenseNumber(value ?? ''),
+                      validator: (value) => validateLicense20B(value ?? ''),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: license21BController,
+                      decoration: const InputDecoration(
+                        labelText: '21B License Number (Optional)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.card_membership),
+                        hintText: 'Drug License 21B',
+                      ),
+                      validator: (value) => validateLicense21B(value ?? ''),
                       textCapitalization: TextCapitalization.characters,
                     ),
                   ],
@@ -503,8 +507,7 @@ class StockistManagementService {
             ElevatedButton(
               onPressed: () async {
                 if (formKey.currentState!.validate() &&
-                    selectedHeadquarter != null &&
-                    selectedArea != null) {
+                    selectedHeadquarter != null) {
                   String result;
                   if (editEntry == null) {
                     result = await addStockist(
@@ -512,9 +515,14 @@ class StockistManagementService {
                       company: companyController.text,
                       contact: contactController.text,
                       address: addressController.text,
-                      area: selectedArea!,
                       headquarter: selectedHeadquarter!,
-                      licenseNumber: licenseController.text,
+                      gstNumber: gstController.text,
+                      license20B: license20BController.text.isEmpty
+                          ? null
+                          : license20BController.text,
+                      license21B: license21BController.text.isEmpty
+                          ? null
+                          : license21BController.text,
                     );
                   } else {
                     result = await editStockist(
@@ -523,9 +531,14 @@ class StockistManagementService {
                       company: companyController.text,
                       contact: contactController.text,
                       address: addressController.text,
-                      area: selectedArea!,
                       headquarter: selectedHeadquarter!,
-                      licenseNumber: licenseController.text,
+                      gstNumber: gstController.text,
+                      license20B: license20BController.text.isEmpty
+                          ? null
+                          : license20BController.text,
+                      license21B: license21BController.text.isEmpty
+                          ? null
+                          : license21BController.text,
                     );
                   }
 
