@@ -112,13 +112,13 @@ class MedicalManagementService {
     }
     return null;
   }
-
-  String? validateAttachedDoctor(String? attachedDoctor) {
-    if (attachedDoctor == null || attachedDoctor.isEmpty) {
-      return 'Please select an attached doctor';
-    }
-    return null;
-  }
+  // making attachedDoctor optional
+  // String? validateAttachedDoctor(String? attachedDoctor) {
+  //   if (attachedDoctor == null || attachedDoctor.isEmpty) {
+  //     return 'Please select an attached doctor';
+  //   }
+  //   return null;
+  // }
 
   // Business logic methods
   Future<bool> isDuplicateMedical(
@@ -144,7 +144,8 @@ class MedicalManagementService {
     required String contactPerson,
     required String phoneNo,
     required String address,
-    required String attachedDoctor,
+    // making attachedDoctor optional
+    String? attachedDoctor,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -165,8 +166,9 @@ class MedicalManagementService {
     final addressError = validateAddress(address);
     if (addressError != null) return addressError;
 
-    final doctorError = validateAttachedDoctor(attachedDoctor);
-    if (doctorError != null) return doctorError;
+    // making attachedDoctor optional
+    // final doctorError = validateAttachedDoctor(attachedDoctor);
+    // if (doctorError != null) return doctorError;
 
     final trimmedName = name.trim();
     if (await isDuplicateMedical(trimmedName)) {
@@ -200,7 +202,8 @@ class MedicalManagementService {
     required String contactPerson,
     required String phoneNo,
     required String address,
-    required String attachedDoctor,
+    // required String attachedDoctor,
+    String? attachedDoctor,
   }) async {
     // Validate all fields
     final nameError = validateName(name);
@@ -221,8 +224,9 @@ class MedicalManagementService {
     final addressError = validateAddress(address);
     if (addressError != null) return addressError;
 
-    final doctorError = validateAttachedDoctor(attachedDoctor);
-    if (doctorError != null) return doctorError;
+    // making attachedDoctor optional
+    // final doctorError = validateAttachedDoctor(attachedDoctor);
+    // if (doctorError != null) return doctorError;
 
     final trimmedName = name.trim();
     if (await isDuplicateMedical(trimmedName, excluding: oldEntry)) {
@@ -302,6 +306,7 @@ class MedicalManagementService {
     // Selected values
     String? selectedHeadquarter = editEntry?.headquarter;
     String? selectedArea = editEntry?.area;
+    // making attachedDoctor optional
     String? selectedDoctor = editEntry?.attachedDoctor;
 
     // Get available options
@@ -462,11 +467,11 @@ class MedicalManagementService {
                     ),
                     const SizedBox(height: 16),
 
-                    // Attached Doctor dropdown
+                    // Attached Doctor dropdown (Optional)
                     DropdownButtonFormField<String>(
                       value: selectedDoctor,
                       decoration: const InputDecoration(
-                        labelText: 'Attached Doctor *',
+                        labelText: 'Attached Doctor (Optional)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.medical_services),
                       ),
@@ -477,20 +482,26 @@ class MedicalManagementService {
                                 child: Text('Select headquarter first'),
                               ),
                             ]
-                          : availableDoctors
-                                .where(
-                                  (doctor) =>
-                                      doctor.headquarter == selectedHeadquarter,
-                                )
-                                .map(
-                                  (doctor) => DropdownMenuItem(
-                                    value: doctor.name,
-                                    child: Text(
-                                      'Dr. ${doctor.name} (${doctor.specialty})',
+                          : [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('None (No doctor assigned)'),
+                              ),
+                              ...availableDoctors
+                                  .where(
+                                    (doctor) =>
+                                        doctor.headquarter ==
+                                        selectedHeadquarter,
+                                  )
+                                  .map(
+                                    (doctor) => DropdownMenuItem(
+                                      value: doctor.name,
+                                      child: Text(
+                                        'Dr. ${doctor.name} (${doctor.specialty})',
+                                      ),
                                     ),
                                   ),
-                                )
-                                .toList(),
+                            ],
                       onChanged: selectedHeadquarter == null
                           ? null
                           : (val) {
@@ -498,7 +509,8 @@ class MedicalManagementService {
                                 selectedDoctor = val;
                               });
                             },
-                      validator: (value) => validateAttachedDoctor(value),
+                      // making attachedDoctor optional
+                      //validator: (value) => validateAttachedDoctor(value),
                     ),
                   ],
                 ),
@@ -522,7 +534,8 @@ class MedicalManagementService {
                       contactPerson: contactPersonController.text,
                       phoneNo: phoneController.text,
                       address: addressController.text,
-                      attachedDoctor: selectedDoctor!,
+                      attachedDoctor:
+                          selectedDoctor, // Remove ! since it's optional
                     );
                   } else {
                     result = await editMedical(
@@ -533,7 +546,8 @@ class MedicalManagementService {
                       contactPerson: contactPersonController.text,
                       phoneNo: phoneController.text,
                       address: addressController.text,
-                      attachedDoctor: selectedDoctor!,
+                      attachedDoctor:
+                          selectedDoctor, // Remove ! since it's optional
                     );
                   }
 

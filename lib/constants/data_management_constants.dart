@@ -67,6 +67,7 @@ class DataManagementConstants {
     'Medicals',
     'Doctors',
     'Stockist',
+    'Manager',
   ];
 
   static const Duration debounceDelay = Duration(milliseconds: 300);

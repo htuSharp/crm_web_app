@@ -8,7 +8,8 @@ class MedicalEntry {
   final String contactPerson;
   final String phoneNo;
   final String address;
-  final String attachedDoctor;
+  // making attachedDoctor optional
+  final String? attachedDoctor;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -20,7 +21,8 @@ class MedicalEntry {
     required this.contactPerson,
     required this.phoneNo,
     required this.address,
-    required this.attachedDoctor,
+    // making attachedDoctor optional
+    this.attachedDoctor,
     this.createdAt,
     this.updatedAt,
   });
@@ -49,6 +51,7 @@ class MedicalEntry {
     String? contactPerson,
     String? phoneNo,
     String? address,
+    // making attachedDoctor optional
     String? attachedDoctor,
     DateTime? createdAt,
     DateTime? updatedAt,
